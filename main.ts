@@ -37,5 +37,13 @@ if (args[0] === "daemon") {
   Deno.exit(0);
 }
 
+// MD-1 (plan-010): route all other args to cliMain
+if (args[0] !== undefined) {
+  const { cliMain } = await import("./src/shells/cli/mod.ts");
+  // cliMain always calls Deno.exit internally; cast to never to satisfy TypeScript
+  await cliMain(args);
+  Deno.exit(0); // fallback if cliMain returns without exiting (should not happen)
+}
+
 console.error("No subcommand provided. Run `clipruler --help`.");
 Deno.exit(1);
