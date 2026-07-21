@@ -33,6 +33,7 @@ import { makeSelfSignedCertP256 } from "../infrastructure/transport/tls-cert.ts"
 import { PROTOCOL_VERSION } from "../protocol/envelope.ts";
 import { SHUTDOWN_TIMEOUT_MS } from "./constants.ts";
 import { startAdminServer } from "./admin/admin-server.ts";
+import { ForgetDevice } from "../application/forget-device.ts";
 import { listDevices, pairWith, toggleSharing } from "../application/index.ts";
 import type { StoredDevice } from "../ports/device-repository.ts";
 import type { DeviceId, PublicKeyFingerprint } from "../domain/device.ts";
@@ -200,9 +201,10 @@ export async function buildAndRunDaemon(opts: {
   });
 
   // ---- 11. Admin server ----
-  // Admin socket path: dataDir/admin.sock (POSIX) or dataDir/admin.port (Windows)
+  // Admin socket path: dataDir/admin.sock (POSIX) or dataDir/admin.endpoint (Windows)
+  // M5 (plan-010): Windows writes JSON {kind:"tcp",port} to adminEndpointFile via startTcpAdminServer
   const adminSocketPath = Deno.build.os === "windows"
-    ? `${paths.dataDir}/admin.port`
+    ? paths.adminEndpointFile
     : `${paths.dataDir}/admin.sock`;
 
   // Stub UI port for daemon context — pairing code is logged since there is no TUI in the daemon.
@@ -250,12 +252,10 @@ export async function buildAndRunDaemon(opts: {
       await toggleSharing({ devices: deviceRepo }, makePublicKeyFingerprint(fp), enabled);
       return { status: "ok" };
     },
-    onForget: (fp: string): Promise<unknown> => {
-      // TODO(plan-010): implement forget-device use case
-      logger.info("admin: forget not yet implemented; will be added in plan-010", {
-        fingerprint: fp,
-      });
-      return Promise.resolve({ status: "ok", message: "queued" });
+    onForget: async (fp: string): Promise<unknown> => {
+      const forgetDevice = new ForgetDevice({ stateStore, clock });
+      const result = await forgetDevice.execute({ fingerprint: fp });
+      return { status: "ok", devices: result.devices };
     },
     onStatus: (): Promise<unknown> =>
       Promise.resolve({
@@ -265,6 +265,16 @@ export async function buildAndRunDaemon(opts: {
         deviceName,
       }),
   });
+
+  // Write the admin endpoint file so the CLI can discover the daemon.
+  // POSIX: Unix socket path stored as JSON {kind:"unix",path:...}
+  // Windows: already written inside startTcpAdminServer (M5)
+  if (Deno.build.os !== "windows") {
+    await Deno.writeTextFile(
+      paths.adminEndpointFile,
+      JSON.stringify({ kind: "unix", path: adminServer.socketPath }),
+    );
+  }
 
   // ---- 12. Return handle with graceful shutdown ----
   const stop = async (): Promise<void> => {
@@ -304,6 +314,9 @@ export async function buildAndRunDaemon(opts: {
 
       // 6. Release PID lock
       await pidLock.release();
+
+      // 7. Remove admin endpoint file
+      await Deno.remove(paths.adminEndpointFile).catch(() => {});
 
       logger.info("daemon: shutdown complete");
     };

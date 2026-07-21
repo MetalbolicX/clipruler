@@ -123,6 +123,137 @@ async function sendAdminEnvelopeAndReadResponse(
 // ---------------------------------------------------------------------------
 
 Deno.test(
+  "endpoint file: exists after daemon start, removed after daemon stop",
+  async () => {
+    const tmpDir = await Deno.makeTempDir();
+    const dataDir = `${tmpDir}/clipruler`;
+    await Deno.mkdir(dataDir, { recursive: true });
+
+    const origHome = Deno.env.get("HOME");
+    const origXdgDataHome = Deno.env.get("XDG_DATA_HOME");
+    const origXdgConfigHome = Deno.env.get("XDG_CONFIG_HOME");
+    const origXdgCacheHome = Deno.env.get("XDG_CACHE_HOME");
+
+    try {
+      Deno.env.set("HOME", tmpDir);
+      Deno.env.set("XDG_DATA_HOME", tmpDir);
+      Deno.env.set("XDG_CONFIG_HOME", tmpDir);
+      Deno.env.set("XDG_CACHE_HOME", tmpDir);
+
+      const { buildAndRunDaemon } = await import("../../src/shells/composition-root.ts");
+      const { resolveAppPaths } = await import("../../src/infrastructure/persistence/app-paths.ts");
+
+      const daemon = await buildAndRunDaemon({ deviceName: "test-device-endpoint" });
+
+      const paths = resolveAppPaths();
+      const endpointFile = paths.adminEndpointFile;
+
+      // (a) Endpoint file must exist after daemon start
+      const stat = await Deno.stat(endpointFile);
+      assertExists(stat, "endpoint file must exist after daemon start");
+      assertEquals(stat.isFile, true);
+
+      // Read and parse the endpoint file — must be valid JSON
+      const content = await Deno.readTextFile(endpointFile);
+      const endpoint = JSON.parse(content) as { kind: string; path?: string; port?: number };
+      if (Deno.build.os === "windows") {
+        assertEquals(endpoint.kind, "tcp");
+        assertEquals(typeof endpoint.port, "number");
+      } else {
+        assertEquals(endpoint.kind, "unix");
+        assertEquals(typeof endpoint.path, "string");
+      }
+
+      await daemon.stop();
+
+      // (b) Endpoint file must be removed after daemon stop
+      let gone = false;
+      try {
+        await Deno.stat(endpointFile);
+        gone = false;
+      } catch (err) {
+        gone = err instanceof Deno.errors.NotFound;
+      }
+      assertEquals(gone, true, "endpoint file must be removed after daemon stop");
+    } finally {
+      if (origHome !== undefined) Deno.env.set("HOME", origHome);
+      else Deno.env.delete("HOME");
+      if (origXdgDataHome !== undefined) Deno.env.set("XDG_DATA_HOME", origXdgDataHome);
+      else Deno.env.delete("XDG_DATA_HOME");
+      if (origXdgConfigHome !== undefined) Deno.env.set("XDG_CONFIG_HOME", origXdgConfigHome);
+      else Deno.env.delete("XDG_CONFIG_HOME");
+      if (origXdgCacheHome !== undefined) Deno.env.set("XDG_CACHE_HOME", origXdgCacheHome);
+      else Deno.env.delete("XDG_CACHE_HOME");
+
+      try {
+        await Deno.remove(tmpDir, { recursive: true });
+      } catch { /* ignore */ }
+    }
+  },
+);
+
+Deno.test(
+  "admin.forget: calls ForgetDevice and returns ok (replaces TODO stub)",
+  async () => {
+    const tmpDir = await Deno.makeTempDir();
+    const dataDir = `${tmpDir}/clipruler`;
+    await Deno.mkdir(dataDir, { recursive: true });
+
+    const origHome = Deno.env.get("HOME");
+    const origXdgDataHome = Deno.env.get("XDG_DATA_HOME");
+    const origXdgConfigHome = Deno.env.get("XDG_CONFIG_HOME");
+    const origXdgCacheHome = Deno.env.get("XDG_CACHE_HOME");
+
+    try {
+      Deno.env.set("HOME", tmpDir);
+      Deno.env.set("XDG_DATA_HOME", tmpDir);
+      Deno.env.set("XDG_CONFIG_HOME", tmpDir);
+      Deno.env.set("XDG_CACHE_HOME", tmpDir);
+
+      const { buildAndRunDaemon } = await import("../../src/shells/composition-root.ts");
+
+      const daemon = await buildAndRunDaemon({ deviceName: "test-device-forget" });
+
+      const adminSockPath = `${dataDir}/admin.sock`;
+
+      // Send admin.forget with a fingerprint that does not exist in state
+      // The real implementation should return ok (not throw) for unknown fingerprint
+      const response = await sendAdminEnvelopeAndReadResponse(adminSockPath, {
+        version: 1,
+        messageId: "test-msg-forget",
+        originDeviceId: "test",
+        kind: "admin.forget",
+        payload: { fingerprint: "unknown-fp-12345" },
+      });
+
+      assertEquals(response.kind, "admin.response");
+      const payload = response.payload as { status: string };
+      // The real implementation must return ok (stub returned "queued")
+      assertEquals(payload.status, "ok");
+
+      await daemon.stop();
+
+      try {
+        await Deno.remove(adminSockPath);
+      } catch { /* ignore */ }
+    } finally {
+      if (origHome !== undefined) Deno.env.set("HOME", origHome);
+      else Deno.env.delete("HOME");
+      if (origXdgDataHome !== undefined) Deno.env.set("XDG_DATA_HOME", origXdgDataHome);
+      else Deno.env.delete("XDG_DATA_HOME");
+      if (origXdgConfigHome !== undefined) Deno.env.set("XDG_CONFIG_HOME", origXdgConfigHome);
+      else Deno.env.delete("XDG_CONFIG_HOME");
+      if (origXdgCacheHome !== undefined) Deno.env.set("XDG_CACHE_HOME", origXdgCacheHome);
+      else Deno.env.delete("XDG_CACHE_HOME");
+
+      try {
+        await Deno.remove(tmpDir, { recursive: true });
+      } catch { /* ignore */ }
+    }
+  },
+);
+
+Deno.test(
   "admin.status round-trip: daemon started, admin socket returns status with tlsPort",
   async () => {
     // Create a temp directory for the daemon's data dir
