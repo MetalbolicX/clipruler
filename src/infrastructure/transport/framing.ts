@@ -35,20 +35,10 @@ export async function writeEnvelope(
   writer: WritableStreamDefaultWriter<Uint8Array>,
   envelope: Envelope,
 ): Promise<void> {
-  // Encode the envelope body (throws on oversize)
-  const bodyBytes = encodeEnvelope(envelope);
-
-  // Acquire the body byte length (already validated by encodeEnvelope)
-  const bodyLen = bodyBytes.byteLength;
-
-  // Build the 4-byte big-endian length prefix
-  const prefix = new Uint8Array(4);
-  const prefixView = new DataView(prefix.buffer, prefix.byteOffset, prefix.byteLength);
-  prefixView.setUint32(0, bodyLen, false); // big-endian
-
-  // Write prefix + body atomically to avoid interleaved frames
-  await writer.write(prefix);
-  await writer.write(bodyBytes);
+  // encodeEnvelope returns full wire format: [4-byte length prefix][JSON body].
+  // We just write it as one chunk so the reader can parse prefix + body without interleaving.
+  const wireBytes = encodeEnvelope(envelope);
+  await writer.write(wireBytes);
 }
 
 // ---------------------------------------------------------------------------

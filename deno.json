@@ -19,7 +19,7 @@
   },
   "tasks": {
     "check": "deno check main.ts src/**/*.ts",
-    "test": "deno test --allow-read --allow-write --allow-run --allow-net --allow-env=CLIPRULER_CLIPBOARD_TESTS,CLIPRULER_NET_TESTS",
+    "test": "deno test --unstable-net --allow-read --allow-write --allow-run --allow-net --allow-env=CLIPRULER_CLIPBOARD_TESTS,CLIPRULER_NET_TESTS,HOME,USER,OS,DISPLAY,WAYLAND_DISPLAY,XDG_DATA_HOME,XDG_CONFIG_HOME,XDG_CACHE_HOME,XDG_RUNTIME_DIR",
     "test:discovery": "CLIPRULER_NET_TESTS=1 deno test --unstable-net --allow-net --allow-env=CLIPRULER_NET_TESTS --filter \"discovery\" tests/integration/discovery_udp_test.ts",
     "test:net": "CLIPRULER_NET_TESTS=1 deno test --allow-read --allow-write --allow-run --allow-net --allow-env=CLIPRULER_NET_TESTS tests/integration/transport_tls_test.ts",
     "test:clipboard": "CLIPRULER_CLIPBOARD_TESTS=1 deno test --allow-read --allow-write --allow-run --allow-env=CLIPRULER_CLIPBOARD_TESTS,DISPLAY,WAYLAND_DISPLAY tests/integration/clipboard_smoke_test.ts",
