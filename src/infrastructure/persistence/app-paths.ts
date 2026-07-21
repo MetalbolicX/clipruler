@@ -77,3 +77,25 @@ function makeWindowsPaths(env: EnvGetter): AppPaths {
 
   return { configDir, dataDir, cacheDir, stateFile, pidFile };
 }
+
+/**
+ * Resolve the application paths using the real Deno environment.
+ * Alias for makeAppPaths() with no arguments.
+ */
+export function resolveAppPaths(): AppPaths {
+  return makeAppPaths();
+}
+
+/**
+ * Ensure all required application directories exist.
+ * Creates configDir, dataDir, and cacheDir recursively.
+ */
+export async function ensureAppDirs(paths: AppPaths): Promise<void> {
+  for (const dir of [paths.configDir, paths.dataDir, paths.cacheDir]) {
+    try {
+      await Deno.mkdir(dir, { recursive: true });
+    } catch (err) {
+      if (!(err instanceof Deno.errors.AlreadyExists)) throw err;
+    }
+  }
+}

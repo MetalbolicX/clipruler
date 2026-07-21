@@ -31,5 +31,11 @@ if (args.includes("--version") || args.includes("-v")) {
   Deno.exit(0);
 }
 
+if (args[0] === "daemon") {
+  const deviceName = Deno.env.get("CLIPRULER_DEVICE_NAME") ?? Deno.hostname();
+  await import("./src/shells/daemon.ts").then((m) => m.daemonMain(deviceName));
+  Deno.exit(0);
+}
+
 console.error("No subcommand provided. Run `clipruler --help`.");
 Deno.exit(1);

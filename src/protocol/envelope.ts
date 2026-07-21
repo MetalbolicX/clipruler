@@ -28,7 +28,15 @@ export type EnvelopeKind =
   | "hello"
   | "pairing-request"
   | "pairing-confirm"
-  | "clipboard";
+  | "clipboard"
+  | "admin.list"
+  | "admin.status"
+  | "admin.pair.request"
+  | "admin.pair.code"
+  | "admin.enable"
+  | "admin.disable"
+  | "admin.forget"
+  | "admin.response";
 
 /** Payload correlation map — used for discriminated union narrowing. */
 export type PayloadByKind<K extends EnvelopeKind> = K extends "hello"
@@ -36,6 +44,14 @@ export type PayloadByKind<K extends EnvelopeKind> = K extends "hello"
   : K extends "pairing-request" ? { deviceName: string; publicKeyFingerprint: string }
   : K extends "pairing-confirm" ? { status: "accepted" | "rejected"; peerDeviceId?: string }
   : K extends "clipboard" ? { version: number; counter: number; content: string }
+  : K extends "admin.list" ? { _kind: "admin.list" }
+  : K extends "admin.status" ? { _kind: "admin.status" }
+  : K extends "admin.pair.request" ? { deviceName: string }
+  : K extends "admin.pair.code" ? { code: string }
+  : K extends "admin.enable" ? { fingerprint: string }
+  : K extends "admin.disable" ? { fingerprint: string }
+  : K extends "admin.forget" ? { fingerprint: string }
+  : K extends "admin.response" ? { status: "ok" | "error"; message?: string }
   : never;
 
 /**
