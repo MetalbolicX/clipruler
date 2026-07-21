@@ -18,6 +18,10 @@ export type {
 export { toggleSharing } from "./toggle-device.ts";
 export type { ToggleSharingDeps } from "./toggle-device.ts";
 
+export { ForgetDevice } from "./forget-device.ts";
+export type { ForgetDeviceDeps, ForgetDeviceInput, ForgetDeviceOutput } from "./forget-device.ts";
+export type { DeviceView } from "./forget-device.ts";
+
 // ---------------------------------------------------------------------------
 // Clipboard sync (Plan 008)
 // ---------------------------------------------------------------------------
