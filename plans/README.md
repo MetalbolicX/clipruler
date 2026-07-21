@@ -44,7 +44,7 @@ remain deterministic.
 | 003  | Ports + persistence + identity      | P1       | M      | 002        | DONE   |
 | 004  | Transport: TLS TCP + framing        | P1       | M      | 003        | DONE   |
 | 005  | Clipboard adapter layer             | P1       | M      | 003        | DONE   |
-| 006  | Discovery: UDP beacon               | P1       | M      | 004        | TODO   |
+| 006  | Discovery: UDP beacon               | P1       | M      | 004        | DONE   |
 | 007  | Pairing + trust                     | P1       | L      | 006        | TODO   |
 | 008  | Clipboard sync end-to-end           | P1       | M      | 007        | TODO   |
 | 009  | Daemon shell                        | P1       | M      | 008        | TODO   |
