@@ -62,8 +62,7 @@ export interface ReceiveClipboardDeps {
  * @returns A cleanup function that stops processing incoming events
  */
 export function startRemoteReceiver(deps: ReceiveClipboardDeps): () => void {
-  const { logger, clock, devices, transport, clipboard, localDeviceId, remoteWriteGate } =
-    deps;
+  const { logger, clock, devices, transport, clipboard, localDeviceId, remoteWriteGate } = deps;
 
   // Stateful conflict resolver — passed forward after each observe call
   let resolver = initResolver();

@@ -31,15 +31,12 @@ import type { Logger } from "../../src/ports/logger.ts";
 import type { Transport } from "../../src/ports/transport.ts";
 import type { Envelope } from "../../src/protocol/envelope.ts";
 import type { DeviceId, PublicKeyFingerprint } from "../../src/domain/device.ts";
-import {
-  makeDeviceId,
-  makePublicKeyFingerprint,
-} from "../../src/domain/device.ts";
+import { makeDeviceId, makePublicKeyFingerprint } from "../../src/domain/device.ts";
 import { PersistentClock } from "../../src/infrastructure/clock/persistent-clock.ts";
 import {
-  startLocalSync,
   createRemoteWriteGate,
   type RemoteWriteGate,
+  startLocalSync,
 } from "../../src/application/sync-clipboard.ts";
 import { startRemoteReceiver } from "../../src/application/receive-clipboard.ts";
 
@@ -66,8 +63,7 @@ class StubLogger implements Logger {
  * transport.send(peerFingerprint, envelope) delivers to the peer's handler.
  */
 class InProcessTransport implements Transport {
-  private readonly _handlers: Array<(envelope: Envelope, peerFingerprint: string) => void> =
-    [];
+  private readonly _handlers: Array<(envelope: Envelope, peerFingerprint: string) => void> = [];
 
   constructor(
     private readonly selfFingerprint: PublicKeyFingerprint,
@@ -334,17 +330,25 @@ Deno.test("clipboard sync: initial sync — A copies hello → B receives within
 
   const nodeA = makeNode(
     makeDeviceId("node-a"),
-    makePublicKeyFingerprint("fp-node-a-000000000000000000000000000000000000000000000000000000000000A"),
+    makePublicKeyFingerprint(
+      "fp-node-a-000000000000000000000000000000000000000000000000000000000000A",
+    ),
     makeDeviceId("node-b"),
-    makePublicKeyFingerprint("fp-node-b-000000000000000000000000000000000000000000000000000000000000B"),
+    makePublicKeyFingerprint(
+      "fp-node-b-000000000000000000000000000000000000000000000000000000000000B",
+    ),
     true, // A has sharing enabled for B
     transportMap,
   );
   const nodeB = makeNode(
     makeDeviceId("node-b"),
-    makePublicKeyFingerprint("fp-node-b-000000000000000000000000000000000000000000000000000000000000B"),
+    makePublicKeyFingerprint(
+      "fp-node-b-000000000000000000000000000000000000000000000000000000000000B",
+    ),
     makeDeviceId("node-a"),
-    makePublicKeyFingerprint("fp-node-a-000000000000000000000000000000000000000000000000000000000000A"),
+    makePublicKeyFingerprint(
+      "fp-node-a-000000000000000000000000000000000000000000000000000000000000A",
+    ),
     true, // B has sharing enabled for A
     transportMap,
   );
@@ -380,17 +384,25 @@ Deno.test("clipboard sync: reverse sync — B copies world → A receives", asyn
 
   const nodeA = makeNode(
     makeDeviceId("node-a"),
-    makePublicKeyFingerprint("fp-node-a-000000000000000000000000000000000000000000000000000000000000A"),
+    makePublicKeyFingerprint(
+      "fp-node-a-000000000000000000000000000000000000000000000000000000000000A",
+    ),
     makeDeviceId("node-b"),
-    makePublicKeyFingerprint("fp-node-b-000000000000000000000000000000000000000000000000000000000000B"),
+    makePublicKeyFingerprint(
+      "fp-node-b-000000000000000000000000000000000000000000000000000000000000B",
+    ),
     true,
     transportMap,
   );
   const nodeB = makeNode(
     makeDeviceId("node-b"),
-    makePublicKeyFingerprint("fp-node-b-000000000000000000000000000000000000000000000000000000000000B"),
+    makePublicKeyFingerprint(
+      "fp-node-b-000000000000000000000000000000000000000000000000000000000000B",
+    ),
     makeDeviceId("node-a"),
-    makePublicKeyFingerprint("fp-node-a-000000000000000000000000000000000000000000000000000000000000A"),
+    makePublicKeyFingerprint(
+      "fp-node-a-000000000000000000000000000000000000000000000000000000000000A",
+    ),
     true,
     transportMap,
   );
@@ -424,17 +436,25 @@ Deno.test("clipboard sync: idempotent re-copy — same content again → only on
 
   const nodeA = makeNode(
     makeDeviceId("node-a"),
-    makePublicKeyFingerprint("fp-node-a-000000000000000000000000000000000000000000000000000000000000A"),
+    makePublicKeyFingerprint(
+      "fp-node-a-000000000000000000000000000000000000000000000000000000000000A",
+    ),
     makeDeviceId("node-b"),
-    makePublicKeyFingerprint("fp-node-b-000000000000000000000000000000000000000000000000000000000000B"),
+    makePublicKeyFingerprint(
+      "fp-node-b-000000000000000000000000000000000000000000000000000000000000B",
+    ),
     true,
     transportMap,
   );
   const nodeB = makeNode(
     makeDeviceId("node-b"),
-    makePublicKeyFingerprint("fp-node-b-000000000000000000000000000000000000000000000000000000000000B"),
+    makePublicKeyFingerprint(
+      "fp-node-b-000000000000000000000000000000000000000000000000000000000000B",
+    ),
     makeDeviceId("node-a"),
-    makePublicKeyFingerprint("fp-node-a-000000000000000000000000000000000000000000000000000000000000A"),
+    makePublicKeyFingerprint(
+      "fp-node-a-000000000000000000000000000000000000000000000000000000000000A",
+    ),
     true,
     transportMap,
   );
@@ -498,17 +518,25 @@ Deno.test("clipboard sync: per-device opt-out — B disables sharing of A → A'
 
   const nodeA = makeNode(
     makeDeviceId("node-a"),
-    makePublicKeyFingerprint("fp-node-a-000000000000000000000000000000000000000000000000000000000000A"),
+    makePublicKeyFingerprint(
+      "fp-node-a-000000000000000000000000000000000000000000000000000000000000A",
+    ),
     makeDeviceId("node-b"),
-    makePublicKeyFingerprint("fp-node-b-000000000000000000000000000000000000000000000000000000000000B"),
+    makePublicKeyFingerprint(
+      "fp-node-b-000000000000000000000000000000000000000000000000000000000000B",
+    ),
     true,
     transportMap,
   );
   const nodeB = makeNode(
     makeDeviceId("node-b"),
-    makePublicKeyFingerprint("fp-node-b-000000000000000000000000000000000000000000000000000000000000B"),
+    makePublicKeyFingerprint(
+      "fp-node-b-000000000000000000000000000000000000000000000000000000000000B",
+    ),
     makeDeviceId("node-a"),
-    makePublicKeyFingerprint("fp-node-a-000000000000000000000000000000000000000000000000000000000000A"),
+    makePublicKeyFingerprint(
+      "fp-node-a-000000000000000000000000000000000000000000000000000000000000A",
+    ),
     true, // Initially B has sharing enabled for A
     transportMap,
   );
@@ -550,17 +578,25 @@ Deno.test("clipboard sync: loop counter — 10 alternating writes yields exactly
 
   const nodeA = makeNode(
     makeDeviceId("node-a"),
-    makePublicKeyFingerprint("fp-node-a-000000000000000000000000000000000000000000000000000000000000A"),
+    makePublicKeyFingerprint(
+      "fp-node-a-000000000000000000000000000000000000000000000000000000000000A",
+    ),
     makeDeviceId("node-b"),
-    makePublicKeyFingerprint("fp-node-b-000000000000000000000000000000000000000000000000000000000000B"),
+    makePublicKeyFingerprint(
+      "fp-node-b-000000000000000000000000000000000000000000000000000000000000B",
+    ),
     true,
     transportMap,
   );
   const nodeB = makeNode(
     makeDeviceId("node-b"),
-    makePublicKeyFingerprint("fp-node-b-000000000000000000000000000000000000000000000000000000000000B"),
+    makePublicKeyFingerprint(
+      "fp-node-b-000000000000000000000000000000000000000000000000000000000000B",
+    ),
     makeDeviceId("node-a"),
-    makePublicKeyFingerprint("fp-node-a-000000000000000000000000000000000000000000000000000000000000A"),
+    makePublicKeyFingerprint(
+      "fp-node-a-000000000000000000000000000000000000000000000000000000000000A",
+    ),
     true,
     transportMap,
   );
@@ -632,9 +668,13 @@ Deno.test("clipboard sync: paired-only acceptance — unpaired origin is dropped
 
   const nodeA = makeNode(
     makeDeviceId("node-a"),
-    makePublicKeyFingerprint("fp-node-a-000000000000000000000000000000000000000000000000000000000000A"),
+    makePublicKeyFingerprint(
+      "fp-node-a-000000000000000000000000000000000000000000000000000000000000A",
+    ),
     makeDeviceId("node-b"),
-    makePublicKeyFingerprint("fp-node-b-000000000000000000000000000000000000000000000000000000000000B"),
+    makePublicKeyFingerprint(
+      "fp-node-b-000000000000000000000000000000000000000000000000000000000000B",
+    ),
     true,
     transportMap,
   );

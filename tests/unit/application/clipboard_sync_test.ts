@@ -15,7 +15,11 @@ import type { DeviceRepository, StoredDevice } from "../../../src/ports/device-r
 import type { Logger } from "../../../src/ports/logger.ts";
 import type { LogicalClock } from "../../../src/ports/logical-clock.ts";
 import type { DeviceId, PublicKeyFingerprint } from "../../../src/domain/device.ts";
-import { makeDeviceId, makeMessageId, makePublicKeyFingerprint } from "../../../src/domain/device.ts";
+import {
+  makeDeviceId,
+  makeMessageId,
+  makePublicKeyFingerprint,
+} from "../../../src/domain/device.ts";
 import type { Envelope } from "../../../src/protocol/envelope.ts";
 import { makeEnvelope } from "../../../src/protocol/envelope.ts";
 
@@ -110,7 +114,8 @@ function makeStoredDevice(
   name: string,
   sharingEnabled: boolean,
 ): StoredDevice {
-  const fpRaw = name.split("").map((c) => c.charCodeAt(0).toString(16).padStart(2, "0")).join("").padEnd(64, "0").slice(0, 64);
+  const fpRaw = name.split("").map((c) => c.charCodeAt(0).toString(16).padStart(2, "0")).join("")
+    .padEnd(64, "0").slice(0, 64);
   const fp = makePublicKeyFingerprint(fpRaw);
   return {
     deviceId: makeDeviceId(`device-${name}`),
@@ -142,7 +147,14 @@ Deno.test("outgoing: empty text change is ignored — no tick, no send", async (
   await devices.upsert(peer);
 
   const { startLocalSync } = await import("../../../src/application/sync-clipboard.ts");
-  const _stop = startLocalSync({ clipboard, clock, devices, transport, logger, remoteWriteGate: gate });
+  const _stop = startLocalSync({
+    clipboard,
+    clock,
+    devices,
+    transport,
+    logger,
+    remoteWriteGate: gate,
+  });
 
   // Emit empty text — must be ignored
   await clipboard.emit({ text: "", isPassword: false });
@@ -166,12 +178,23 @@ Deno.test("outgoing: non-empty change sends flat clipboard payload with no isPas
   await devices.upsert(peer);
 
   const { startLocalSync } = await import("../../../src/application/sync-clipboard.ts");
-  const _stop = startLocalSync({ clipboard, clock, devices, transport, logger, remoteWriteGate: gate });
+  const _stop = startLocalSync({
+    clipboard,
+    clock,
+    devices,
+    transport,
+    logger,
+    remoteWriteGate: gate,
+  });
 
   await clipboard.emit({ text: "hello world", isPassword: false });
 
   assertEquals(clock.ticks, 1, "clock.tick must be called exactly once");
-  assertEquals(transport.calls.send.length, 1, "transport.send must be called for the one sharing peer");
+  assertEquals(
+    transport.calls.send.length,
+    1,
+    "transport.send must be called for the one sharing peer",
+  );
 
   const { peerFingerprint, envelope } = transport.calls.send[0]!;
   assertEquals(peerFingerprint, peer.fingerprint, "send must be to the correct peer fingerprint");
@@ -182,7 +205,11 @@ Deno.test("outgoing: non-empty change sends flat clipboard payload with no isPas
   assertEquals(payload.version, 1, "payload version must be 1");
   assertEquals(payload.counter, 6, "payload counter must be clock tick result (5 + 1)");
   assertEquals(payload.content, "hello world", "payload content must match emitted text");
-  assertEquals(Object.prototype.hasOwnProperty.call(payload, "isPassword"), false, "payload must NOT contain isPassword");
+  assertEquals(
+    Object.prototype.hasOwnProperty.call(payload, "isPassword"),
+    false,
+    "payload must NOT contain isPassword",
+  );
 });
 
 Deno.test("outgoing: paired peer with clipboardSharingEnabled=false is skipped", async () => {
@@ -200,14 +227,29 @@ Deno.test("outgoing: paired peer with clipboardSharingEnabled=false is skipped",
   await devices.upsert(mutedPeer);
 
   const { startLocalSync } = await import("../../../src/application/sync-clipboard.ts");
-  const _stop = startLocalSync({ clipboard, clock, devices, transport, logger, remoteWriteGate: gate });
+  const _stop = startLocalSync({
+    clipboard,
+    clock,
+    devices,
+    transport,
+    logger,
+    remoteWriteGate: gate,
+  });
 
   await clipboard.emit({ text: "test", isPassword: false });
 
   assertEquals(transport.calls.send.length, 1, "exactly one send must occur");
   const { peerFingerprint } = transport.calls.send[0]!;
-  assertEquals(peerFingerprint, sharingPeer.fingerprint, "only the sharing-enabled peer must receive the send");
-  assertEquals(peerFingerprint !== mutedPeer.fingerprint, true, "muted peer must not receive the send");
+  assertEquals(
+    peerFingerprint,
+    sharingPeer.fingerprint,
+    "only the sharing-enabled peer must receive the send",
+  );
+  assertEquals(
+    peerFingerprint !== mutedPeer.fingerprint,
+    true,
+    "muted peer must not receive the send",
+  );
 });
 
 Deno.test("outgoing: one-shot gate suppresses the next broadcast when suppressed", async () => {
@@ -222,7 +264,14 @@ Deno.test("outgoing: one-shot gate suppresses the next broadcast when suppressed
   await devices.upsert(peer);
 
   const { startLocalSync } = await import("../../../src/application/sync-clipboard.ts");
-  const _stop = startLocalSync({ clipboard, clock, devices, transport, logger, remoteWriteGate: gate });
+  const _stop = startLocalSync({
+    clipboard,
+    clock,
+    devices,
+    transport,
+    logger,
+    remoteWriteGate: gate,
+  });
 
   // Simulate a remote write just occurred — gate is now suppressed
   gate.suppressNext();
@@ -230,7 +279,11 @@ Deno.test("outgoing: one-shot gate suppresses the next broadcast when suppressed
   await clipboard.emit({ text: "should be suppressed", isPassword: false });
 
   assertEquals(clock.ticks, 0, "clock.tick must NOT be called when gate is suppressed");
-  assertEquals(transport.calls.send.length, 0, "transport.send must NOT be called when gate is suppressed");
+  assertEquals(
+    transport.calls.send.length,
+    0,
+    "transport.send must NOT be called when gate is suppressed",
+  );
 
   // Next event (gate now reset) should go through normally
   await clipboard.emit({ text: "normal event", isPassword: false });
