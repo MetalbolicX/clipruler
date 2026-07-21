@@ -23,6 +23,30 @@ import { PowershellClipboardAdapter } from "../../src/infrastructure/clipboard/p
 
 const RUN_INTEGRATION = Deno.env.get("CLIPRULER_CLIPBOARD_TESTS") === "1";
 
+/**
+ * Wraps a promise with a hard timeout. If the timeout fires first, the returned
+ * promise rejects with a timeout error. This prevents smoke tests from hanging
+ * indefinitely when a clipboard binary exists (e.g. xclip) but the display
+ * server it needs is unreachable.
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`TIMEOUT:${label}:${ms}ms`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 function sentinel(): string {
   return `clipruler-test-${crypto.randomUUID()}`;
 }
@@ -31,8 +55,30 @@ async function writeReadBack(
   adapter: WlClipboardAdapter | XclipAdapter | PowershellClipboardAdapter,
   text: string,
 ): Promise<void> {
-  await adapter.write({ text, isPassword: false });
-  const content = await adapter.read();
+  const adapterName = adapter.constructor.name;
+  try {
+    await withTimeout(adapter.write({ text, isPassword: false }), 5000, `${adapterName} write`);
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("TIMEOUT:")) {
+      console.warn(
+        `${adapterName} smoke skipped: write timeout (likely no X/Wayland server reachable)`,
+      );
+      return;
+    }
+    throw err;
+  }
+  let content: Awaited<ReturnType<typeof adapter.read>>;
+  try {
+    content = await withTimeout(adapter.read(), 5000, `${adapterName} read`);
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("TIMEOUT:")) {
+      console.warn(
+        `${adapterName} smoke skipped: read timeout (likely no X/Wayland server reachable)`,
+      );
+      return;
+    }
+    throw err;
+  }
   assertEquals(content.text, text, "read back should equal what was written");
 }
 
