@@ -26,6 +26,7 @@ export interface AppPaths {
   readonly cacheDir: string;
   readonly stateFile: string;
   readonly pidFile: string;
+  readonly adminEndpointFile: string;
 }
 
 type EnvGetter = (key: string) => string | undefined;
@@ -56,7 +57,7 @@ function makePosixPaths(env: EnvGetter): AppPaths {
   const stateFile = resolve(dataDir, STATE_FILENAME);
   const pidFile = resolve(dataDir, PID_FILENAME);
 
-  return { configDir, dataDir, cacheDir, stateFile, pidFile };
+  return { configDir, dataDir, cacheDir, stateFile, pidFile, adminEndpointFile: resolve(dataDir, "admin.endpoint") };
 }
 
 function makeWindowsPaths(env: EnvGetter): AppPaths {
@@ -74,8 +75,9 @@ function makeWindowsPaths(env: EnvGetter): AppPaths {
   const cacheDir = winAbs(localAppData) + "/" + APP_NAME;
   const stateFile = resolve(dataDir, STATE_FILENAME);
   const pidFile = resolve(dataDir, PID_FILENAME);
+  const adminEndpointFile = dataDir + "/admin.endpoint";
 
-  return { configDir, dataDir, cacheDir, stateFile, pidFile };
+  return { configDir, dataDir, cacheDir, stateFile, pidFile, adminEndpointFile };
 }
 
 /**
