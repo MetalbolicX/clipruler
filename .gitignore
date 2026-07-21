@@ -1,0 +1,23 @@
+# Deno
+deno.lock
+# Allow deno.lock if you prefer reproducible installs; remove this line to commit it.
+
+# Build output
+dist/
+*.prof
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local state (created by the daemon at runtime)
+.state/
+*.pid
+
+# Plans scratch
+.scratch/
