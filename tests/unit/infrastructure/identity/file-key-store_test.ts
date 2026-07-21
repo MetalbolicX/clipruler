@@ -32,6 +32,7 @@ async function makeTempAppPaths(prefix = "file-key-store-test"): Promise<{
     cacheDir: dir + "/cache",
     stateFile,
     pidFile,
+    adminEndpointFile: dir + "/admin.endpoint",
   };
   await Deno.mkdir(appPaths.configDir, { recursive: true });
   await Deno.mkdir(appPaths.dataDir, { recursive: true });

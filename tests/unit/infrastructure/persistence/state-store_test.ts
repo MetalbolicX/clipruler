@@ -42,6 +42,7 @@ async function makeTempAppPaths(
     cacheDir: dir + "/cache",
     stateFile,
     pidFile,
+    adminEndpointFile: dir + "/admin.endpoint",
   };
   const cleanup = () => {
     Deno.removeSync(dir, { recursive: true });
