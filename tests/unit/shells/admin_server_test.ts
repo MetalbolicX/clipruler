@@ -377,7 +377,7 @@ Deno.test("admin.pair.request returns error (not implemented in PR1 stub)", asyn
   }
 });
 
-Deno.test("Windows: TCP server writes port to socketPath file", async () => {
+Deno.test('Windows: TCP server writes {kind:"tcp",port} JSON to socketPath file', async () => {
   // Only runs on Windows — skip on other platforms
   if (Deno.build.os !== "windows") return;
 
@@ -388,10 +388,12 @@ Deno.test("Windows: TCP server writes port to socketPath file", async () => {
   const { deps } = makeDeps({});
   const server = await startAdminServer(portFilePath, deps);
   try {
-    const portContent = await Deno.readTextFile(portFilePath);
-    const port = parseInt(portContent.trim(), 10);
-    assertEquals(typeof port, "number");
-    assertEquals(port > 0 && port <= 65535, true);
+    const fileContent = await Deno.readTextFile(portFilePath);
+    // The file must contain JSON: { "kind": "tcp", "port": <number> }
+    const parsed = JSON.parse(fileContent) as { kind: string; port: number };
+    assertEquals(parsed.kind, "tcp");
+    assertEquals(typeof parsed.port, "number");
+    assertEquals(parsed.port > 0 && parsed.port <= 65535, true);
   } finally {
     await server.stop();
     try {

@@ -151,7 +151,8 @@ async function startTcpAdminServer(
   const port = addr.port;
 
   // Write the chosen port to socketPath so the CLI knows where to connect
-  await Deno.writeTextFile(socketPath, `${port}`);
+  // M5 (plan-010): write JSON {kind:"tcp",port} for uniform parsing on both OSes
+  await Deno.writeTextFile(socketPath, JSON.stringify({ kind: "tcp", port }));
 
   let closed = false;
   let resolveStopped: () => void = () => {};
