@@ -22,3 +22,6 @@ export type { Transport } from "./transport.ts";
 
 // ClipboardAdapter port
 export type { ClipboardAdapter, ClipboardContent } from "./clipboard-adapter.ts";
+
+// UiPort — pairing UI contract
+export type { UiPort } from "./ui.ts";

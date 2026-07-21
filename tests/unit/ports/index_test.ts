@@ -16,8 +16,8 @@ import type {
   Transport,
 } from "../../../src/ports/index.ts";
 import type { Envelope } from "../../../src/protocol/envelope.ts";
-import type { DeviceId } from "../../../src/domain/device.ts";
-import { makeDeviceId } from "../../../src/domain/device.ts";
+import type { DeviceId, PublicKeyFingerprint } from "../../../src/domain/device.ts";
+import { makeDeviceId, makePublicKeyFingerprint } from "../../../src/domain/device.ts";
 
 /**
  * Scenario: all type re-exports are valid types (compilation proves reachability).
@@ -76,6 +76,9 @@ Deno.test("DeviceRepository and StoredDevice are reachable via barrel", () => {
     get(_id: DeviceId): Promise<StoredDevice | null> {
       return Promise.resolve(null);
     },
+    getByFingerprint(_fp: PublicKeyFingerprint): Promise<StoredDevice | null> {
+      return Promise.resolve(null);
+    },
     upsert(_d: StoredDevice): Promise<void> {
       return Promise.resolve();
     },
@@ -88,6 +91,9 @@ Deno.test("DeviceRepository and StoredDevice are reachable via barrel", () => {
   };
   const _stored: StoredDevice = {
     deviceId: makeDeviceId("test"),
+    fingerprint: makePublicKeyFingerprint(
+      "0000000000000000000000000000000000000000000000000000000000000000",
+    ),
     name: "Test",
     lastEndpoint: null,
     lastSeenAt: null,
