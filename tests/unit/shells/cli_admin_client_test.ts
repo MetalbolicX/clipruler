@@ -74,10 +74,15 @@ function makeMockWritable(): {
   return { stream, getWritten: () => written };
 }
 
-function makeMockConn(readable: ReadableStream<Uint8Array>, writable: WritableStream<Uint8Array>): Deno.Conn {
+function makeMockConn(
+  readable: ReadableStream<Uint8Array>,
+  writable: WritableStream<Uint8Array>,
+): Deno.Conn {
   return {
     id: `mock-${Math.random()}`,
-    close(): Promise<void> { return Promise.resolve(); },
+    close(): Promise<void> {
+      return Promise.resolve();
+    },
     writable,
     readable,
   } as unknown as Deno.Conn;
@@ -94,7 +99,8 @@ Deno.test("adminCommand writes framed envelope and reads response", async () => 
 
   // Override Deno.connect temporarily
   const originalConnect = Deno.connect;
-  (Deno as unknown as Record<string, unknown>).connect = (() => mockConn) as unknown as typeof Deno.connect;
+  (Deno as unknown as Record<string, unknown>).connect =
+    (() => mockConn) as unknown as typeof Deno.connect;
 
   try {
     const endpoint: AdminEndpoint = { kind: "tcp", port: 7341 };
@@ -118,7 +124,8 @@ Deno.test("adminCommand returns parsed AdminResponse with data", async () => {
   const mockConn = makeMockConn(readable, writable);
 
   const originalConnect = Deno.connect;
-  (Deno as unknown as Record<string, unknown>).connect = (() => mockConn) as unknown as typeof Deno.connect;
+  (Deno as unknown as Record<string, unknown>).connect =
+    (() => mockConn) as unknown as typeof Deno.connect;
 
   try {
     const endpoint: AdminEndpoint = { kind: "tcp", port: 7341 };
@@ -142,10 +149,13 @@ Deno.test("adminCommand works with unix socket endpoint", async () => {
 
   let connectedPath: string | null = null;
   const originalConnect = Deno.connect;
-  (Deno as unknown as Record<string, unknown>).connect = ((opts: { transport: "unix"; path: string } | { transport: "tcp"; port: number }) => {
-    if (opts.transport === "unix") connectedPath = (opts as { transport: "unix"; path: string }).path;
-    return mockConn;
-  }) as unknown as typeof Deno.connect;
+  (Deno as unknown as Record<string, unknown>).connect =
+    ((opts: { transport: "unix"; path: string } | { transport: "tcp"; port: number }) => {
+      if (opts.transport === "unix") {
+        connectedPath = (opts as { transport: "unix"; path: string }).path;
+      }
+      return mockConn;
+    }) as unknown as typeof Deno.connect;
 
   try {
     const endpoint: AdminEndpoint = { kind: "unix", path: "/tmp/clipruler.sock" };
@@ -158,9 +168,8 @@ Deno.test("adminCommand works with unix socket endpoint", async () => {
 
 Deno.test("adminCommand connection failure throws catchable error", async () => {
   const originalConnect = Deno.connect;
-  (Deno as unknown as Record<string, unknown>).connect = (() =>
-    Promise.reject(new Error("connection refused"))
-  ) as unknown as typeof Deno.connect;
+  (Deno as unknown as Record<string, unknown>).connect =
+    (() => Promise.reject(new Error("connection refused"))) as unknown as typeof Deno.connect;
 
   try {
     const endpoint: AdminEndpoint = { kind: "tcp", port: 9999 };

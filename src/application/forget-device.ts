@@ -69,7 +69,8 @@ export class ForgetDevice {
     const updated: StateFileV1 = {
       ...state,
       trustedDevices: state.trustedDevices.filter(
-        (d) => d.deviceId !== input.fingerprint &&
+        (d) =>
+          d.deviceId !== input.fingerprint &&
           d.publicKeyBase64 !== input.fingerprint,
       ),
     };

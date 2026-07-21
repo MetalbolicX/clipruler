@@ -98,7 +98,9 @@ export async function cliMain(args: string[]): Promise<void> {
         Deno.exit(1);
         return;
       }
-      await renderDevices(response.data as import("../../application/list-devices.ts").DeviceListView);
+      await renderDevices(
+        response.data as import("../../application/list-devices.ts").DeviceListView,
+      );
       Deno.exit(0);
       break;
     }

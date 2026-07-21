@@ -18,7 +18,7 @@ import type {
   ForgetDeviceOutput,
 } from "../../../src/application/forget-device.ts";
 import { ForgetDevice } from "../../../src/application/forget-device.ts";
-import { makePublicKeyFingerprint, makeDeviceId } from "../../../src/domain/device.ts";
+import { makeDeviceId, makePublicKeyFingerprint } from "../../../src/domain/device.ts";
 
 // ---------------------------------------------------------------------------
 // FakeClock — deterministic logical clock for testing
@@ -149,7 +149,8 @@ Deno.test("ForgetDevice.execute removes known fingerprint and persists", async (
   // The fingerprint parameter identifies the device; internally we filter
   // TrustedDeviceEntry by publicKeyBase64 matching the fingerprint string
   const useCase = new ForgetDevice({
-    stateStore: store as unknown as import("../../../src/infrastructure/persistence/state-store.ts").StateStore,
+    stateStore:
+      store as unknown as import("../../../src/infrastructure/persistence/state-store.ts").StateStore,
     clock,
   });
 
@@ -175,7 +176,8 @@ Deno.test("ForgetDevice.execute is no-op for unknown fingerprint — no save", a
 
   const clock = new FakeClock();
   const useCase = new ForgetDevice({
-    stateStore: store as unknown as import("../../../src/infrastructure/persistence/state-store.ts").StateStore,
+    stateStore:
+      store as unknown as import("../../../src/infrastructure/persistence/state-store.ts").StateStore,
     clock,
   });
 

@@ -13,7 +13,7 @@
  */
 
 import { makeEnvelope } from "../../protocol/envelope.ts";
-import { writeEnvelope, readEnvelope } from "../../infrastructure/transport/index.ts";
+import { readEnvelope, writeEnvelope } from "../../infrastructure/transport/index.ts";
 
 // ---------------------------------------------------------------------------
 // Types

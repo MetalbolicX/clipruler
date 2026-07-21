@@ -57,7 +57,14 @@ function makePosixPaths(env: EnvGetter): AppPaths {
   const stateFile = resolve(dataDir, STATE_FILENAME);
   const pidFile = resolve(dataDir, PID_FILENAME);
 
-  return { configDir, dataDir, cacheDir, stateFile, pidFile, adminEndpointFile: resolve(dataDir, "admin.endpoint") };
+  return {
+    configDir,
+    dataDir,
+    cacheDir,
+    stateFile,
+    pidFile,
+    adminEndpointFile: resolve(dataDir, "admin.endpoint"),
+  };
 }
 
 function makeWindowsPaths(env: EnvGetter): AppPaths {
