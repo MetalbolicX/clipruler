@@ -1,3 +1,4 @@
+// deno-lint-ignore-file require-await
 /**
  * Unit tests for shells/cli/admin-client.ts.
  *
@@ -16,7 +17,7 @@
  */
 import { assertEquals, assertExists, assertRejects } from "jsr:@std/assert@^1.0";
 import type { Envelope } from "../../../src/protocol/envelope.ts";
-import type { AdminEndpoint, AdminResponse } from "../../../src/shells/cli/admin-client.ts";
+import type { AdminEndpoint } from "../../../src/shells/cli/admin-client.ts";
 import { adminCommand, readAdminEndpoint } from "../../../src/shells/cli/admin-client.ts";
 
 // ---------------------------------------------------------------------------

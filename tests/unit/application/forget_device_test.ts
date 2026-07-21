@@ -1,3 +1,4 @@
+// deno-lint-ignore-file require-await
 /**
  * Unit tests for application/forget-device.ts.
  *
@@ -10,9 +11,7 @@
  * Layer: unit — uses a minimal StateStore mock.
  */
 import { assertEquals, assertExists } from "jsr:@std/assert@^1.0";
-import type { PairedDeviceView } from "../../../src/application/list-devices.ts";
 import type { StateFileV1 } from "../../../src/infrastructure/persistence/state-file-v1.ts";
-import type { LogicalClock } from "../../../src/ports/logical-clock.ts";
 import type {
   DeviceView,
   ForgetDeviceInput,
