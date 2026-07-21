@@ -13,8 +13,9 @@
  *
  * Strict TDD: RED first (this test should fail until PR1 implementation is complete).
  */
-import { assertEquals } from "jsr:@std/assert@^1.0";
+import { assertEquals, assertExists, assertRejects } from "jsr:@std/assert@^1.0";
 import { SHUTDOWN_TIMEOUT_MS } from "../../src/shells/constants.ts";
+import { LockHeldError } from "../../src/infrastructure/pid-lock/pid-lock.ts";
 
 // The composition root — only import after understanding the test harness below
 // We import dynamically to allow test double injection
@@ -60,5 +61,207 @@ Deno.test(
   async () => {
     const admin = await import("../../src/shells/admin/admin-server.ts");
     assertEquals(typeof admin.startAdminServer, "function");
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Wire format helpers — matching protocol/envelope.ts wire format
+// ---------------------------------------------------------------------------
+
+/** Encode an envelope to wire format (length-prefixed JSON). */
+function encodeWire(env: Record<string, unknown>): Uint8Array {
+  const json = JSON.stringify(env);
+  const body = new TextEncoder().encode(json);
+  const result = new Uint8Array(4 + body.byteLength);
+  const view = new DataView(result.buffer, result.byteOffset, result.byteLength);
+  view.setUint32(0, body.byteLength, false);
+  result.set(body, 4);
+  return result;
+}
+
+/**
+ * Connect to a Unix socket server, send an envelope, and read the response.
+ * Uses FramingReader from the infrastructure layer for consistent chunk handling.
+ */
+async function sendAdminEnvelopeAndReadResponse(
+  sockPath: string,
+  envelope: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const conn = await Deno.connect({ transport: "unix", path: sockPath });
+  try {
+    const wireData = encodeWire(envelope);
+    await conn.write(wireData);
+
+    // Read 4-byte length prefix
+    const lenBuf = new Uint8Array(4);
+    let lenRead = 0;
+    while (lenRead < 4) {
+      const n = await conn.read(lenBuf.subarray(lenRead, 4 - lenRead));
+      if (n === null) break;
+      lenRead += n;
+    }
+    const bodyLen = new DataView(lenBuf.buffer, lenBuf.byteOffset, 4).getUint32(0, false);
+
+    // Read body
+    const body = new Uint8Array(bodyLen);
+    let bodyRead = 0;
+    while (bodyRead < bodyLen) {
+      const n = await conn.read(body.subarray(bodyRead, bodyLen - bodyRead));
+      if (n === null) break;
+      bodyRead += n;
+    }
+
+    const json = new TextDecoder().decode(body);
+    return JSON.parse(json) as Record<string, unknown>;
+  } finally {
+    conn.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Integration tests
+// ---------------------------------------------------------------------------
+
+Deno.test(
+  "admin.status round-trip: daemon started, admin socket returns status with tlsPort",
+  async () => {
+    // Create a temp directory for the daemon's data dir
+    const tmpDir = await Deno.makeTempDir();
+    const dataDir = `${tmpDir}/clipruler`;
+    await Deno.mkdir(dataDir, { recursive: true });
+
+    // Save original env and patch to use temp directory
+    const origHome = Deno.env.get("HOME");
+    const origXdgDataHome = Deno.env.get("XDG_DATA_HOME");
+    const origXdgConfigHome = Deno.env.get("XDG_CONFIG_HOME");
+    const origXdgCacheHome = Deno.env.get("XDG_CACHE_HOME");
+
+    try {
+      Deno.env.set("HOME", tmpDir);
+      Deno.env.set("XDG_DATA_HOME", tmpDir);
+      Deno.env.set("XDG_CONFIG_HOME", tmpDir);
+      Deno.env.set("XDG_CACHE_HOME", tmpDir);
+
+      // Import composition root after env is set
+      const { buildAndRunDaemon } = await import("../../src/shells/composition-root.ts");
+
+      const daemon = await buildAndRunDaemon({ deviceName: "test-device-lifecycle" });
+
+      // Determine admin socket path (Unix on POSIX)
+      const adminSockPath = `${dataDir}/admin.sock`;
+
+      try {
+        // Send admin.status envelope
+        const response = await sendAdminEnvelopeAndReadResponse(adminSockPath, {
+          version: 1,
+          messageId: "test-msg-id",
+          originDeviceId: "test",
+          kind: "admin.status",
+          payload: {},
+        });
+
+        // Verify response
+        assertEquals(response.kind, "admin.response");
+        const payload = response.payload as { status: string; message?: string };
+        assertEquals(payload.status, "ok");
+        assertExists(payload.message);
+
+        const parsed = JSON.parse(payload.message as string) as Record<string, unknown>;
+        assertExists(parsed["tlsPort"], "tlsPort must be present in status response");
+        assertEquals(typeof parsed["tlsPort"], "number");
+        assertEquals(parsed["pid"], Deno.pid);
+        assertEquals(parsed["deviceName"], "test-device-lifecycle");
+      } finally {
+        await daemon.stop();
+
+        // Clean up admin socket
+        try {
+          await Deno.remove(adminSockPath);
+        } catch {
+          // ignore
+        }
+      }
+    } finally {
+      // Restore env
+      if (origHome !== undefined) Deno.env.set("HOME", origHome);
+      else Deno.env.delete("HOME");
+      if (origXdgDataHome !== undefined) Deno.env.set("XDG_DATA_HOME", origXdgDataHome);
+      else Deno.env.delete("XDG_DATA_HOME");
+      if (origXdgConfigHome !== undefined) Deno.env.set("XDG_CONFIG_HOME", origXdgConfigHome);
+      else Deno.env.delete("XDG_CONFIG_HOME");
+      if (origXdgCacheHome !== undefined) Deno.env.set("XDG_CACHE_HOME", origXdgCacheHome);
+      else Deno.env.delete("XDG_CACHE_HOME");
+
+      // Clean up temp dir
+      try {
+        await Deno.remove(tmpDir, { recursive: true });
+      } catch {
+        // ignore
+      }
+    }
+  },
+);
+
+Deno.test(
+  "second daemon invocation rejects with LockHeldError",
+  async () => {
+    // Create a temp directory for the daemon's data dir
+    const tmpDir = await Deno.makeTempDir();
+    const dataDir = `${tmpDir}/clipruler`;
+    await Deno.mkdir(dataDir, { recursive: true });
+
+    // Save original env and patch to use temp directory
+    const origHome = Deno.env.get("HOME");
+    const origXdgDataHome = Deno.env.get("XDG_DATA_HOME");
+    const origXdgConfigHome = Deno.env.get("XDG_CONFIG_HOME");
+    const origXdgCacheHome = Deno.env.get("XDG_CACHE_HOME");
+
+    try {
+      Deno.env.set("HOME", tmpDir);
+      Deno.env.set("XDG_DATA_HOME", tmpDir);
+      Deno.env.set("XDG_CONFIG_HOME", tmpDir);
+      Deno.env.set("XDG_CACHE_HOME", tmpDir);
+
+      // Import composition root after env is set
+      const { buildAndRunDaemon } = await import("../../src/shells/composition-root.ts");
+
+      const daemon = await buildAndRunDaemon({ deviceName: "test-device-lock" });
+
+      try {
+        // Attempt to start a second daemon — should throw LockHeldError
+        await assertRejects(
+          async () => {
+            await buildAndRunDaemon({ deviceName: "test-device-lock-second" });
+          },
+          LockHeldError,
+        );
+      } finally {
+        await daemon.stop();
+
+        // Clean up admin socket
+        try {
+          await Deno.remove(`${dataDir}/admin.sock`);
+        } catch {
+          // ignore
+        }
+      }
+    } finally {
+      // Restore env
+      if (origHome !== undefined) Deno.env.set("HOME", origHome);
+      else Deno.env.delete("HOME");
+      if (origXdgDataHome !== undefined) Deno.env.set("XDG_DATA_HOME", origXdgDataHome);
+      else Deno.env.delete("XDG_DATA_HOME");
+      if (origXdgConfigHome !== undefined) Deno.env.set("XDG_CONFIG_HOME", origXdgConfigHome);
+      else Deno.env.delete("XDG_CONFIG_HOME");
+      if (origXdgCacheHome !== undefined) Deno.env.set("XDG_CACHE_HOME", origXdgCacheHome);
+      else Deno.env.delete("XDG_CACHE_HOME");
+
+      // Clean up temp dir
+      try {
+        await Deno.remove(tmpDir, { recursive: true });
+      } catch {
+        // ignore
+      }
+    }
   },
 );

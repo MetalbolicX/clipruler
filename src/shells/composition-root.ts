@@ -33,10 +33,13 @@ import { makeSelfSignedCertP256 } from "../infrastructure/transport/tls-cert.ts"
 import { PROTOCOL_VERSION } from "../protocol/envelope.ts";
 import { SHUTDOWN_TIMEOUT_MS } from "./constants.ts";
 import { startAdminServer } from "./admin/admin-server.ts";
+import { listDevices, pairWith, toggleSharing } from "../application/index.ts";
 import type { StoredDevice } from "../ports/device-repository.ts";
 import type { DeviceId, PublicKeyFingerprint } from "../domain/device.ts";
+import { makePublicKeyFingerprint } from "../domain/device.ts";
 import type { RunningAdminServer } from "./admin/admin-server.ts";
 import type { DeviceRepository } from "../ports/device-repository.ts";
+import type { UiPort } from "../ports/ui.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -202,18 +205,57 @@ export async function buildAndRunDaemon(opts: {
     ? `${paths.dataDir}/admin.port`
     : `${paths.dataDir}/admin.sock`;
 
-  const adminServer: RunningAdminServer = await startAdminServer(adminSocketPath, {
-    logger: logger.child("admin"),
-    onList: () => Promise.resolve([]),
-    onPair: (_fingerprint: string): Promise<unknown> =>
-      Promise.resolve({ status: "error", message: "PR2" }),
-    onEnable: (fp: string, enabled: boolean): Promise<void> => {
-      logger.info("admin: enable/disable", { fingerprint: fp, enabled });
+  // Stub UI port for daemon context — pairing code is logged since there is no TUI in the daemon.
+  // The pairing flow requires user interaction; the daemon-side just initiates the request.
+  const stubUi: UiPort = {
+    presentPairingCode(code: string): Promise<void> {
+      logger.info("pairing: present code to user", { code });
       return Promise.resolve();
     },
-    onForget: (fp: string): Promise<void> => {
-      logger.info("admin: forget", { fingerprint: fp });
+    confirmPairing(_remoteName: string, _code: string): Promise<boolean> {
+      return Promise.resolve(false);
+    },
+    notifyPaired(_deviceName: string): Promise<void> {
       return Promise.resolve();
+    },
+    notifyPairingFailed(_reason: "mismatch" | "rejected" | "timeout"): Promise<void> {
+      return Promise.resolve();
+    },
+  };
+
+  const adminLogger = logger.child("admin");
+
+  const adminServer: RunningAdminServer = await startAdminServer(adminSocketPath, {
+    logger: adminLogger,
+    onList: async (): Promise<unknown> => {
+      const view = await listDevices({ devices: deviceRepo, discovery: beacon });
+      return view;
+    },
+    onPair: async (fingerprint: string): Promise<unknown> => {
+      const outcome = await pairWith(
+        {
+          logger: adminLogger,
+          devices: deviceRepo,
+          discovery: beacon,
+          keys: keyStore,
+          transport: transport,
+          ui: stubUi,
+        },
+        makePublicKeyFingerprint(fingerprint),
+        deviceName,
+      );
+      return outcome;
+    },
+    onEnable: async (fp: string, enabled: boolean): Promise<unknown> => {
+      await toggleSharing({ devices: deviceRepo }, makePublicKeyFingerprint(fp), enabled);
+      return { status: "ok" };
+    },
+    onForget: (fp: string): Promise<unknown> => {
+      // TODO(plan-010): implement forget-device use case
+      logger.info("admin: forget not yet implemented; will be added in plan-010", {
+        fingerprint: fp,
+      });
+      return Promise.resolve({ status: "ok", message: "queued" });
     },
     onStatus: (): Promise<unknown> =>
       Promise.resolve({

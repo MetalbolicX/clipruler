@@ -16,8 +16,8 @@
 
 import type { Logger } from "../../ports/logger.ts";
 import type { Envelope } from "../../protocol/envelope.ts";
+import { decodeEnvelope, encodeEnvelope } from "../../protocol/envelope.ts";
 import { makeMessageId } from "../../domain/device.ts";
-import { readEnvelope, writeEnvelope } from "../../infrastructure/transport/framing.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -65,6 +65,8 @@ export async function startAdminServer(
 
 /**
  * Unix socket admin server (POSIX).
+ * Uses explicit .accept() loop instead of for-await to avoid Deno
+ * stream buffering issues with Unix domain sockets.
  */
 async function startUnixAdminServer(
   socketPath: string,
@@ -72,43 +74,62 @@ async function startUnixAdminServer(
 ): Promise<RunningAdminServer> {
   const { logger } = deps;
 
-  // Set socket file mode to 0600 — owner read/write only
+  // Remove stale socket file if it exists
   try {
-    await Deno.chmod(socketPath, 0o600);
+    await Deno.remove(socketPath);
   } catch {
-    // File may not exist yet; will be created by listen
+    // Does not exist — that is fine
   }
 
-  let closeFn: () => void = () => {};
   const server = Deno.listen({
     transport: "unix",
     path: socketPath,
   });
 
+  // Set socket file mode to 0600 — owner read/write only
+  // Note: chmod must happen AFTER listen, not before
+  try {
+    await Deno.chmod(socketPath, 0o600);
+  } catch {
+    // Ignore chmod errors (e.g. on Windows where chmod is NOP)
+  }
+
+  let closed = false;
+  let resolveStopped: () => void = () => {};
   const stopped = new Promise<void>((resolve) => {
-    closeFn = () => {
-      try {
-        server.close();
-      } catch {
-        // Ignore close errors
-      }
-      resolve();
-    };
+    resolveStopped = resolve;
   });
 
-  // Accept loop — handle connections concurrently
+  function closeServer(): void {
+    if (closed) return;
+    closed = true;
+    try {
+      server.close();
+    } catch {
+      // Ignore
+    }
+    resolveStopped();
+  }
+
+  // Accept loop — handle connections concurrently using explicit .accept()
   (async () => {
-    for await (const conn of server) {
-      handleUnixConn(conn as Deno.Conn, deps, logger).catch((err) => {
-        logger.error("admin-server: connection error", { error: String(err) });
-      });
+    while (!closed) {
+      try {
+        const conn = await server.accept();
+        handleUnixConn(conn, deps, logger).catch((err) => {
+          logger.error("admin-server: connection error", { error: String(err) });
+        });
+      } catch (err) {
+        if (closed) break;
+        logger.error("admin-server: accept error", { error: String(err) });
+      }
     }
   })();
 
   return {
     socketPath,
     stop: async () => {
-      closeFn();
+      closeServer();
       await stopped;
     },
   };
@@ -132,37 +153,50 @@ async function startTcpAdminServer(
   // Write the chosen port to socketPath so the CLI knows where to connect
   await Deno.writeTextFile(socketPath, `${port}`);
 
-  let closeFn: () => void = () => {};
+  let closed = false;
+  let resolveStopped: () => void = () => {};
   const stopped = new Promise<void>((resolve) => {
-    closeFn = () => {
-      try {
-        server.close();
-      } catch {
-        // Ignore close errors
-      }
-      resolve();
-    };
+    resolveStopped = resolve;
   });
 
+  function closeServer(): void {
+    if (closed) return;
+    closed = true;
+    try {
+      server.close();
+    } catch {
+      // Ignore close errors
+    }
+    resolveStopped();
+  }
+
   (async () => {
-    for await (const conn of server) {
-      handleTcpConn(conn as Deno.TcpConn, deps, logger).catch((err) => {
-        logger.error("admin-server: TCP connection error", { error: String(err) });
-      });
+    while (!closed) {
+      try {
+        const conn = await server.accept();
+        handleTcpConn(conn, deps, logger).catch((err) => {
+          logger.error("admin-server: TCP connection error", { error: String(err) });
+        });
+      } catch (err) {
+        if (closed) break;
+        logger.error("admin-server: TCP accept error", { error: String(err) });
+      }
     }
   })();
 
   return {
     socketPath,
     stop: async () => {
-      closeFn();
+      closeServer();
       await stopped;
     },
   };
 }
 
 /**
- * Handle a single Unix socket connection.
+ * Handle a single Unix socket connection using raw conn.read()/conn.write().
+ * We avoid conn.readable.getReader() on Unix sockets due to Deno stream
+ * buffering issues with domain sockets; raw conn.read() works correctly.
  */
 async function handleUnixConn(
   conn: Deno.Conn,
@@ -170,9 +204,9 @@ async function handleUnixConn(
   logger: Logger,
 ): Promise<void> {
   try {
-    const reader = conn.readable.getReader();
-    const writer = conn.writable.getWriter();
-    await handleConnection(reader, writer, deps, logger);
+    await handleUnixConnection(conn, deps, logger);
+  } catch (err) {
+    logger.error("admin-server: handle error", { error: String(err) });
   } finally {
     try {
       conn.close();
@@ -183,7 +217,69 @@ async function handleUnixConn(
 }
 
 /**
- * Handle a single TCP connection.
+ * Handle a Unix socket connection: read envelope, dispatch, write response.
+ * Uses conn.read() for reliable reads on Unix sockets.
+ */
+async function handleUnixConnection(
+  conn: Deno.Conn,
+  deps: AdminServerDeps,
+  logger: Logger,
+): Promise<void> {
+  // Read 4-byte length prefix with partial-read handling
+  const lenBuf = new Uint8Array(4);
+  let lenRead = 0;
+  while (lenRead < 4) {
+    const n = await conn.read(lenBuf.subarray(lenRead, 4 - lenRead));
+    if (n === null) return; // EOF
+    lenRead += n;
+  }
+  const bodyLen = new DataView(lenBuf.buffer, lenBuf.byteOffset, 4).getUint32(0, false);
+
+  // Sanity check on body length
+  if (bodyLen === 0 || bodyLen > 16 * 1024 * 1024) {
+    logger.error("admin-server: invalid body length", { bodyLen });
+    return;
+  }
+
+  // Read body
+  const body = new Uint8Array(bodyLen);
+  let bodyRead = 0;
+  while (bodyRead < bodyLen) {
+    const n = await conn.read(body.subarray(bodyRead, bodyLen - bodyRead));
+    if (n === null) return; // EOF
+    bodyRead += n;
+  }
+
+  // Reconstruct wire: 4-byte length prefix + body (decodeEnvelope expects full wire format)
+  const wire = new Uint8Array(4 + bodyLen);
+  wire.set(lenBuf, 0);
+  wire.set(body, 4);
+
+  // Decode envelope
+  let envelope: Envelope;
+  try {
+    envelope = decodeEnvelope(wire);
+  } catch (err) {
+    logger.error("admin-server: decode error", { error: String(err), bodyLen });
+    return;
+  }
+
+  // Dispatch
+  const response = await dispatchAdmin(envelope, deps, logger);
+  if (!response) return;
+
+  // Encode and send response
+  const respWire = encodeEnvelope(response);
+  let wireWritten = 0;
+  while (wireWritten < respWire.length) {
+    const n = await conn.write(respWire.subarray(wireWritten));
+    if (n === null) return;
+    wireWritten += n;
+  }
+}
+
+/**
+ * Handle a single TCP connection using raw conn.read()/conn.write().
  */
 async function handleTcpConn(
   conn: Deno.TcpConn,
@@ -191,9 +287,9 @@ async function handleTcpConn(
   logger: Logger,
 ): Promise<void> {
   try {
-    const reader = conn.readable.getReader();
-    const writer = conn.writable.getWriter();
-    await handleConnection(reader, writer, deps, logger);
+    await handleTcpConnection(conn, deps, logger);
+  } catch (err) {
+    logger.error("admin-server: TCP handle error", { error: String(err) });
   } finally {
     try {
       conn.close();
@@ -204,29 +300,58 @@ async function handleTcpConn(
 }
 
 /**
- * Shared connection handler for both Unix and TCP.
+ * Handle a TCP connection: read envelope, dispatch, write response.
+ * Uses conn.read() for reliable reads.
  */
-async function handleConnection(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-  writer: WritableStreamDefaultWriter<Uint8Array>,
+async function handleTcpConnection(
+  conn: Deno.TcpConn,
   deps: AdminServerDeps,
   logger: Logger,
 ): Promise<void> {
+  // Read 4-byte length prefix
+  const lenBuf = new Uint8Array(4);
+  let lenRead = 0;
+  while (lenRead < 4) {
+    const n = await conn.read(lenBuf.subarray(lenRead, 4 - lenRead));
+    if (n === null) return; // EOF
+    lenRead += n;
+  }
+  const bodyLen = new DataView(lenBuf.buffer, lenBuf.byteOffset, 4).getUint32(0, false);
+
+  // Read body
+  const body = new Uint8Array(bodyLen);
+  let bodyRead = 0;
+  while (bodyRead < bodyLen) {
+    const n = await conn.read(body.subarray(bodyRead, bodyLen - bodyRead));
+    if (n === null) return; // EOF
+    bodyRead += n;
+  }
+
+  // Reconstruct wire: 4-byte length prefix + body (decodeEnvelope expects full wire format)
+  const wireIn = new Uint8Array(4 + bodyLen);
+  wireIn.set(lenBuf, 0);
+  wireIn.set(body, 4);
+
+  // Decode envelope
+  let envelope: Envelope;
   try {
-    const envelope = await readEnvelope(reader);
-    const response = await dispatchAdmin(envelope, deps, logger);
-    if (response) {
-      await writeEnvelope(writer, response);
-      await writer.ready;
-    }
+    envelope = decodeEnvelope(wireIn);
   } catch (err) {
-    logger.error("admin-server: handle error", { error: String(err) });
-  } finally {
-    try {
-      writer.releaseLock();
-    } catch {
-      // Ignore
-    }
+    logger.error("admin-server: TCP decode error", { error: String(err) });
+    return;
+  }
+
+  // Dispatch
+  const response = await dispatchAdmin(envelope, deps, logger);
+  if (!response) return;
+
+  // Encode and send response
+  const wire = encodeEnvelope(response);
+  let wireWritten = 0;
+  while (wireWritten < wire.length) {
+    const n = await conn.write(wire.subarray(wireWritten));
+    if (n === null) return;
+    wireWritten += n;
   }
 }
 

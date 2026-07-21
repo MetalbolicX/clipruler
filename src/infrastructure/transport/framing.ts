@@ -94,7 +94,8 @@ export class FramingReader {
     }
 
     // Extract the declared body length from the first 4 bytes
-    const bodyLen = new DataView(prefixBytes.buffer, prefixBytes.byteOffset, 4).getUint32(0, false);
+    const prefixLen = prefixBytes.subarray(0, 4);
+    const bodyLen = new DataView(prefixLen.buffer, prefixLen.byteOffset, 4).getUint32(0, false);
 
     // ---- PHASE 2: validate declared length BEFORE reading body ----
 
@@ -159,8 +160,14 @@ export class FramingReader {
 
     // ---- PHASE 4: decode the body ----
 
+    // decodeEnvelope expects full wire format (4-byte prefix + body).
+    // Reconstruct it by prepending the original 4-byte prefix to bodyBytes.
+    const wire = new Uint8Array(4 + bodyBytes.byteLength);
+    wire.set(prefixLen, 0);
+    wire.set(bodyBytes, 4);
+
     try {
-      return decodeEnvelope(bodyBytes);
+      return decodeEnvelope(wire);
     } catch (err) {
       throw new FramingError(
         "invalid-envelope",
