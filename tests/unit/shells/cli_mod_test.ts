@@ -10,13 +10,13 @@
  *
  * Layer: unit — mocks admin-client and render at module level.
  */
-import { assertEquals, assertStringIncludes } from "jsr:@std/assert@^1.0";
+// deno-lint-ignore-file require-await
+import { assertEquals } from "jsr:@std/assert@^1.0";
 
 // ---------------------------------------------------------------------------
 // Spy state
 // ---------------------------------------------------------------------------
 
-let lastArgs: string[] = [];
 let exitCode: number | null = null;
 let printOutput = "";
 let printErrorOutput = "";
@@ -47,7 +47,6 @@ function setupMocks(client: MockAdminClient): void {
   printErrorOutput = "";
 
   // Mock Deno.exit
-  const originalExit = Deno.exit;
   (Deno as unknown as Record<string, unknown>).exit = ((code: number) => {
     exitCode = code;
   }) as typeof Deno.exit;
@@ -112,7 +111,12 @@ Deno.test("status subcommand is recognized and does not throw", async () => {
     readAdminEndpoint: async () => ({ endpoint: "/tmp/clipruler/admin.sock", transport: "unix" }),
     adminCommand: async () => ({
       status: "ok",
-      data: { deviceName: "my-machine", tlsPort: 7341, pid: 12345, adminEndpoint: "unix:/tmp/clipruler/admin.sock" },
+      data: {
+        deviceName: "my-machine",
+        tlsPort: 7341,
+        pid: 12345,
+        adminEndpoint: "unix:/tmp/clipruler/admin.sock",
+      },
     }),
   };
   await runCli(["status"], client);

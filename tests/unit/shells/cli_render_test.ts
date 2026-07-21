@@ -14,6 +14,7 @@ import type { AdminResponse } from "../../../src/shells/cli/admin-client.ts";
 import { renderDevices, renderPairResult, renderStatus } from "../../../src/shells/cli/render.ts";
 
 // ANSI color code pattern — output MUST NOT contain these
+// deno-lint-ignore no-control-regex
 const ANSI_PATTERN = /\x1b\[[0-9;]*[a-zA-Z]/;
 
 // ---------------------------------------------------------------------------
@@ -103,7 +104,10 @@ async function captureRenderOutput(fn: () => Promise<void>): Promise<string> {
   const totalLen = chunks.reduce((acc, b) => acc + b.byteLength, 0);
   const buf = new Uint8Array(totalLen);
   let off = 0;
-  for (const c of chunks) { buf.set(c, off); off += c.byteLength; }
+  for (const c of chunks) {
+    buf.set(c, off);
+    off += c.byteLength;
+  }
   return new TextDecoder().decode(buf);
 }
 
