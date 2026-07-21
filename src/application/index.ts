@@ -17,3 +17,17 @@ export type {
 
 export { toggleSharing } from "./toggle-device.ts";
 export type { ToggleSharingDeps } from "./toggle-device.ts";
+
+// ---------------------------------------------------------------------------
+// Clipboard sync (Plan 008)
+// ---------------------------------------------------------------------------
+
+export {
+  startLocalSync,
+  createRemoteWriteGate,
+  type RemoteWriteGate,
+} from "./sync-clipboard.ts";
+export type { SyncClipboardDeps } from "./sync-clipboard.ts";
+
+export { startRemoteReceiver } from "./receive-clipboard.ts";
+export type { ReceiveClipboardDeps } from "./receive-clipboard.ts";

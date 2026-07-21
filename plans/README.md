@@ -46,7 +46,7 @@ remain deterministic.
 | 005  | Clipboard adapter layer             | P1       | M      | 003        | DONE   |
 | 006  | Discovery: UDP beacon               | P1       | M      | 004        | DONE   |
 | 007  | Pairing + trust                     | P1       | L      | 006        | DONE   |
-| 008  | Clipboard sync end-to-end           | P1       | M      | 007        | TODO   |
+| 008  | Clipboard sync end-to-end           | P1       | M      | 007        | DONE   |
 | 009  | Daemon shell                        | P1       | M      | 008        | TODO   |
 | 010  | CLI shell + admin channel           | P1       | M      | 009        | TODO   |
 | 011  | Desktop shell (Deno Desktop + tray) | P2       | L      | 010        | TODO   |
