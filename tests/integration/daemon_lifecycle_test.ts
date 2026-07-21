@@ -13,7 +13,7 @@
  *
  * Strict TDD: RED first (this test should fail until PR1 implementation is complete).
  */
-import { assertEquals, assertExists } from "jsr:@std/assert@^1.0";
+import { assertEquals } from "jsr:@std/assert@^1.0";
 import { SHUTDOWN_TIMEOUT_MS } from "../../src/shells/constants.ts";
 
 // The composition root — only import after understanding the test harness below
