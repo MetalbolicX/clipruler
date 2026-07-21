@@ -195,6 +195,7 @@ Deno.test({
   name: "powershell smoke: write/read back a UUID sentinel",
   ignore: !RUN_INTEGRATION,
   async fn() {
+    if (Deno.build.os !== "windows") return; // PowerShell clipboard only works on actual Windows
     const hasPwsh = await which("powershell.exe");
     if (!hasPwsh) return;
 
@@ -216,6 +217,7 @@ Deno.test({
   name: "powershell smoke: handles apostrophe and multiline text",
   ignore: !RUN_INTEGRATION,
   async fn() {
+    if (Deno.build.os !== "windows") return; // PowerShell clipboard only works on actual Windows
     const hasPwsh = await which("powershell.exe");
     if (!hasPwsh) return;
 
