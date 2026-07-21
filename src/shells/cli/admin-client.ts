@@ -104,7 +104,12 @@ export async function adminCommand<T = unknown>(
       data: responsePayload.data as T,
     };
   } finally {
-    await conn.close();
+    // Guard against double-close when the server closes first (e.g., BrokenPipe)
+    try {
+      conn.close();
+    } catch {
+      // Connection already closed — ignore
+    }
   }
 }
 

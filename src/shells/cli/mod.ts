@@ -89,7 +89,24 @@ export async function cliMain(args: string[]): Promise<void> {
     return;
   }
 
-  // Dispatch subcommands
+  // Top-level error handler — maps connection errors to exit 2 (daemon not running)
+  // and other errors to exit 1 (daemon error).
+  try {
+    await dispatchSubcommand(subcommand, args, endpoint);
+  } catch (err) {
+    console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    Deno.exit(1);
+  }
+}
+
+/**
+ * Dispatch a subcommand. Extracted for top-level error handling.
+ */
+async function dispatchSubcommand(
+  subcommand: string,
+  args: string[],
+  endpoint: AdminEndpoint,
+): Promise<void> {
   switch (subcommand) {
     case "list": {
       const response = await adminCommand(endpoint, "admin.list", { _kind: "admin.list" });
