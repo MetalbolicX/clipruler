@@ -8,13 +8,16 @@
  * - Connection is closed after use
  * - Returns parsed AdminResponse payload
  * - Connection failure throws catchable error
+ * - readAdminEndpoint: missing file → 3 retries with 50ms backoff → null
+ * - readAdminEndpoint: valid JSON → AdminEndpoint
+ * - readAdminEndpoint: malformed JSON → throws
  *
  * Layer: unit — uses inline mock via direct variable assignment.
  */
 import { assertEquals, assertExists, assertRejects } from "jsr:@std/assert@^1.0";
 import type { Envelope } from "../../../src/protocol/envelope.ts";
 import type { AdminEndpoint, AdminResponse } from "../../../src/shells/cli/admin-client.ts";
-import { adminCommand } from "../../../src/shells/cli/admin-client.ts";
+import { adminCommand, readAdminEndpoint } from "../../../src/shells/cli/admin-client.ts";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -167,5 +170,56 @@ Deno.test("adminCommand connection failure throws catchable error", async () => 
     );
   } finally {
     (Deno as unknown as Record<string, unknown>).connect = originalConnect;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// readAdminEndpoint tests
+// ---------------------------------------------------------------------------
+
+Deno.test("readAdminEndpoint missing file retries 3 times then returns null", async () => {
+  let readAttempts = 0;
+  const originalReadTextFile = Deno.readTextFile;
+  (Deno as unknown as Record<string, unknown>).readTextFile = (async (_path: string) => {
+    readAttempts++;
+    throw new Deno.errors.NotFound();
+  }) as typeof Deno.readTextFile;
+
+  try {
+    const result = await readAdminEndpoint("/tmp/nonexistent/endpoint");
+    assertEquals(result, null);
+    assertEquals(readAttempts, 3); // 3 retries
+  } finally {
+    (Deno as unknown as Record<string, unknown>).readTextFile = originalReadTextFile;
+  }
+});
+
+Deno.test("readAdminEndpoint valid JSON returns AdminEndpoint", async () => {
+  const originalReadTextFile = Deno.readTextFile;
+  (Deno as unknown as Record<string, unknown>).readTextFile = (async (_path: string) => {
+    return JSON.stringify({ kind: "unix", path: "/tmp/clipruler.sock" });
+  }) as typeof Deno.readTextFile;
+
+  try {
+    const result = await readAdminEndpoint("/tmp/endpoint");
+    assertEquals(result, { kind: "unix", path: "/tmp/clipruler.sock" });
+  } finally {
+    (Deno as unknown as Record<string, unknown>).readTextFile = originalReadTextFile;
+  }
+});
+
+Deno.test("readAdminEndpoint malformed JSON throws", async () => {
+  const originalReadTextFile = Deno.readTextFile;
+  (Deno as unknown as Record<string, unknown>).readTextFile = (async (_path: string) => {
+    return "not valid json {{{";
+  }) as typeof Deno.readTextFile;
+
+  try {
+    await assertRejects(
+      async () => readAdminEndpoint("/tmp/endpoint"),
+      Error,
+    );
+  } finally {
+    (Deno as unknown as Record<string, unknown>).readTextFile = originalReadTextFile;
   }
 });

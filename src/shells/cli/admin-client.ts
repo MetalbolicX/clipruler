@@ -107,3 +107,47 @@ export async function adminCommand<T = unknown>(
     await conn.close();
   }
 }
+
+// ---------------------------------------------------------------------------
+// readAdminEndpoint — resolves daemon admin endpoint with retry
+// ---------------------------------------------------------------------------
+
+const RETRY_COUNT = 3;
+const RETRY_DELAY_MS = 50;
+
+/**
+ * Read and parse the admin endpoint file.
+ *
+ * - Missing or empty file: retry 3× with 50ms backoff → null
+ * - Valid JSON: returns AdminEndpoint (unix or tcp)
+ * - Malformed JSON: throws
+ */
+export async function readAdminEndpoint(
+  adminEndpointFile: string,
+): Promise<AdminEndpoint | null> {
+  for (let attempt = 0; attempt < RETRY_COUNT; attempt++) {
+    try {
+      const content = await Deno.readTextFile(adminEndpointFile);
+      if (content.trim().length === 0) {
+        // Empty file — treat as missing
+        if (attempt < RETRY_COUNT - 1) {
+          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+        }
+        continue;
+      }
+      return JSON.parse(content) as AdminEndpoint;
+    } catch (err) {
+      if (err instanceof Deno.errors.NotFound) {
+        if (attempt < RETRY_COUNT - 1) {
+          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+        }
+        continue;
+      }
+      if (err instanceof SyntaxError) {
+        throw new Error(`Malformed JSON in ${adminEndpointFile}: ${err.message}`);
+      }
+      throw err;
+    }
+  }
+  return null;
+}
