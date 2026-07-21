@@ -86,9 +86,9 @@ async function cleanup(
   adapter: WlClipboardAdapter | XclipAdapter | PowershellClipboardAdapter,
 ): Promise<void> {
   try {
-    await adapter.write({ text: "", isPassword: false });
+    await withTimeout(adapter.write({ text: "", isPassword: false }), 2000, "cleanup write");
   } catch {
-    // Cleanup failures are non-fatal in smoke tests
+    // Cleanup failures (including timeouts) are non-fatal in smoke tests
   }
 }
 
