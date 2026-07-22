@@ -57,7 +57,7 @@ export async function renderDevices(view: DeviceListView): Promise<void> {
     }
   }
 
-  await writer.close();
+  writer.releaseLock();
 }
 
 // ---------------------------------------------------------------------------
@@ -86,7 +86,7 @@ export async function renderStatus(
   if (view.status === "error") {
     const msg = `Error: ${view.message ?? "unknown error"}\n`;
     await writer.write(out.encode(msg));
-    await writer.close();
+    writer.releaseLock();
     return;
   }
 
@@ -102,7 +102,7 @@ export async function renderStatus(
     await writer.write(out.encode(line));
   }
 
-  await writer.close();
+  writer.releaseLock();
 }
 
 // ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ export async function renderPairResult(
   if (view.status === "error") {
     const msg = `Pairing failed: ${view.message ?? "unknown error"}\n`;
     await writer.write(out.encode(msg));
-    await writer.close();
+    writer.releaseLock();
     return;
   }
 
@@ -134,5 +134,5 @@ export async function renderPairResult(
     await writer.write(out.encode("Pairing initiated.\n"));
   }
 
-  await writer.close();
+  writer.releaseLock();
 }

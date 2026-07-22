@@ -65,9 +65,14 @@ export async function adminCommand<T = unknown>(
       payload as import("../../protocol/envelope.ts").PayloadByKind<typeof kind>,
     );
 
-    // Write the framed envelope
+    // Write the framed envelope. The frame is length-prefixed and self-delimiting,
+    // so the daemon knows the request is complete without an EOF. We must NOT
+    // close the writer here: on a real Deno socket, writer.close() tears down the
+    // shared connection resource and the read below would throw
+    // "The stream's underlying resource was closed or consumed". conn.close() in
+    // the finally block owns full teardown.
     await writeEnvelope(writer, envelope);
-    await writer.close();
+    writer.releaseLock();
 
     // Read one response envelope
     const responseEnvelope = await readEnvelope(reader);

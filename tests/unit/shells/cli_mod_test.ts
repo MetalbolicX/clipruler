@@ -1,167 +1,99 @@
 /**
  * Unit tests for shells/cli/mod.ts.
  *
- * Verifies:
- * - Each of 6 subcommands dispatches to the correct handler
- * - --help/-h/empty argv exits 0
- * - Unknown subcommand exits 2
- * - Daemon error (status: error) exits 1
- * - Daemon absent (endpoint missing after retries) exits 2
+ * Verifies cliMain exit-code semantics:
+ * - --help / -h / empty argv → 0 (help printed before endpoint resolution)
+ * - Unknown subcommand → 2
+ * - Known subcommand with no daemon reachable → 2 (admin endpoint not found)
  *
- * Layer: unit — mocks admin-client and render at module level.
+ * Layer: unit — calls cliMain in-process with an isolated env (temp HOME /
+ * XDG dirs) so endpoint resolution deterministically fails. No subprocess.
  */
-// deno-lint-ignore-file require-await
 import { assertEquals } from "jsr:@std/assert@^1.0";
+import { cliMain } from "../../../src/shells/cli/mod.ts";
 
 // ---------------------------------------------------------------------------
-// Spy state
+// Env isolation helper — points HOME/XDG at a fresh temp dir so the admin
+// endpoint file is absent and resolveEndpoint() deterministically returns null.
 // ---------------------------------------------------------------------------
 
-let exitCode: number | null = null;
-let printOutput = "";
-let printErrorOutput = "";
-
-// ---------------------------------------------------------------------------
-// Module-level mocks (overrides in place of the real implementations)
-// ---------------------------------------------------------------------------
-
-interface MockAdminClient {
-  readAdminEndpoint: () => Promise<{ endpoint: string; transport: string } | null>;
-  adminCommand: (
-    endpoint: { type: "unix"; path: string } | { type: "tcp"; host: string; port: number },
-    kind: string,
-    payload?: unknown,
-  ) => Promise<{ status: "ok"; data?: unknown } | { status: "error"; message?: string }>;
+interface EnvSnapshot {
+  tmpDir: string;
+  keys: Record<string, string | undefined>;
 }
 
-let mockClient: MockAdminClient | null = null;
-
-// ---------------------------------------------------------------------------
-// Mock Deno
-// ---------------------------------------------------------------------------
-
-function setupMocks(client: MockAdminClient): void {
-  mockClient = client;
-  exitCode = null;
-  printOutput = "";
-  printErrorOutput = "";
-
-  // Mock Deno.exit
-  (Deno as unknown as Record<string, unknown>).exit = ((code: number) => {
-    exitCode = code;
-  }) as typeof Deno.exit;
-
-  // Mock Deno.stdout.write — capture print output
-  const originalStdoutWrite = Deno.stdout.write;
-  (Deno.stdout as unknown as Record<string, unknown>).write = ((
-    data: Uint8Array,
-  ): Promise<number> => {
-    printOutput += new TextDecoder().decode(data);
-    return Promise.resolve(data.byteLength);
-  }) as typeof originalStdoutWrite;
-
-  // Mock Deno.stderr.write — capture error output
-  const originalStderrWrite = Deno.stderr.write;
-  (Deno.stderr as unknown as Record<string, unknown>).write = ((
-    data: Uint8Array,
-  ): Promise<number> => {
-    printErrorOutput += new TextDecoder().decode(data);
-    return Promise.resolve(data.byteLength);
-  }) as typeof originalStderrWrite;
+async function isolateEnv(): Promise<EnvSnapshot> {
+  const tmpDir = await Deno.makeTempDir();
+  const keys: Record<string, string | undefined> = {
+    HOME: Deno.env.get("HOME"),
+    "XDG_DATA_HOME": Deno.env.get("XDG_DATA_HOME"),
+    "XDG_CONFIG_HOME": Deno.env.get("XDG_CONFIG_HOME"),
+    "XDG_CACHE_HOME": Deno.env.get("XDG_CACHE_HOME"),
+  };
+  Deno.env.set("HOME", tmpDir);
+  Deno.env.set("XDG_DATA_HOME", tmpDir);
+  Deno.env.set("XDG_CONFIG_HOME", tmpDir);
+  Deno.env.set("XDG_CACHE_HOME", tmpDir);
+  return { tmpDir, keys };
 }
 
-function restoreMocks(): void {
-  if (mockClient) {
-    (Deno as unknown as Record<string, unknown>).exit = Deno.exit;
-    (Deno.stdout as unknown as Record<string, unknown>).write = Deno.stdout.write;
-    (Deno.stderr as unknown as Record<string, unknown>).write = Deno.stderr.write;
-    mockClient = null;
+function restoreEnv(snap: EnvSnapshot): void {
+  for (const [k, v] of Object.entries(snap.keys)) {
+    if (v === undefined) Deno.env.delete(k);
+    else Deno.env.set(k, v);
   }
+  Deno.remove(snap.tmpDir, { recursive: true }).catch(() => {
+    // ignore
+  });
 }
 
 // ---------------------------------------------------------------------------
-// Test helpers — run cliMain with given args and a mock client
+// Tests — arg parsing paths (no daemon dependency, no env isolation needed)
 // ---------------------------------------------------------------------------
 
-async function runCli(args: string[], client: MockAdminClient): Promise<void> {
-  setupMocks(client);
+Deno.test("cliMain: --help returns 0", async () => {
+  assertEquals(await cliMain(["--help"]), 0);
+});
+
+Deno.test("cliMain: -h returns 0", async () => {
+  assertEquals(await cliMain(["-h"]), 0);
+});
+
+Deno.test("cliMain: empty args returns 0", async () => {
+  assertEquals(await cliMain([]), 0);
+});
+
+Deno.test("cliMain: unknown subcommand returns 2", async () => {
+  assertEquals(await cliMain(["notasubcommand"]), 2);
+});
+
+// ---------------------------------------------------------------------------
+// Tests — known subcommands with no daemon reachable → 2
+// ---------------------------------------------------------------------------
+
+Deno.test("cliMain: list with no daemon returns 2", async () => {
+  const snap = await isolateEnv();
   try {
-    // Dynamic import after mocks are in place
-    const { cliMain } = await import("../../../src/shells/cli/mod.ts");
-    await cliMain(args);
+    assertEquals(await cliMain(["list"]), 2);
   } finally {
-    restoreMocks();
+    restoreEnv(snap);
   }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
-Deno.test("list subcommand is recognized and does not throw", async () => {
-  const client: MockAdminClient = {
-    readAdminEndpoint: async () => ({ endpoint: "/tmp/clipruler/admin.sock", transport: "unix" }),
-    adminCommand: async () => ({ status: "ok", data: { paired: [], available: [] } }),
-  };
-  await runCli(["list"], client);
 });
 
-Deno.test("status subcommand is recognized and does not throw", async () => {
-  const client: MockAdminClient = {
-    readAdminEndpoint: async () => ({ endpoint: "/tmp/clipruler/admin.sock", transport: "unix" }),
-    adminCommand: async () => ({
-      status: "ok",
-      data: {
-        deviceName: "my-machine",
-        tlsPort: 7341,
-        pid: 12345,
-        adminEndpoint: "unix:/tmp/clipruler/admin.sock",
-      },
-    }),
-  };
-  await runCli(["status"], client);
+Deno.test("cliMain: status with no daemon returns 2", async () => {
+  const snap = await isolateEnv();
+  try {
+    assertEquals(await cliMain(["status"]), 2);
+  } finally {
+    restoreEnv(snap);
+  }
 });
 
-Deno.test("pair subcommand is recognized and does not throw", async () => {
-  const client: MockAdminClient = {
-    readAdminEndpoint: async () => ({ endpoint: "/tmp/clipruler/admin.sock", transport: "unix" }),
-    adminCommand: async () => ({ status: "ok", data: { pairingCode: "ABC-123" } }),
-  };
-  await runCli(["pair"], client);
-});
-
-Deno.test("unknown subcommand exits with code 2", async () => {
-  const client: MockAdminClient = {
-    readAdminEndpoint: async () => null,
-    adminCommand: async () => ({ status: "error", message: "daemon not running" }),
-  };
-  await runCli(["notasubcommand"], client);
-  assertEquals(exitCode, 2);
-});
-
-Deno.test("--help exits with code 0", async () => {
-  const client: MockAdminClient = {
-    readAdminEndpoint: async () => null,
-    adminCommand: async () => ({ status: "error", message: "daemon not running" }),
-  };
-  await runCli(["--help"], client);
-  assertEquals(exitCode, 0);
-});
-
-Deno.test("-h exits with code 0", async () => {
-  const client: MockAdminClient = {
-    readAdminEndpoint: async () => null,
-    adminCommand: async () => ({ status: "error", message: "daemon not running" }),
-  };
-  await runCli(["-h"], client);
-  assertEquals(exitCode, 0);
-});
-
-Deno.test("empty args exits with code 0", async () => {
-  const client: MockAdminClient = {
-    readAdminEndpoint: async () => null,
-    adminCommand: async () => ({ status: "error", message: "daemon not running" }),
-  };
-  await runCli([], client);
-  assertEquals(exitCode, 0);
+Deno.test("cliMain: pair with no daemon returns 2", async () => {
+  const snap = await isolateEnv();
+  try {
+    assertEquals(await cliMain(["pair"]), 2);
+  } finally {
+    restoreEnv(snap);
+  }
 });
