@@ -48,7 +48,7 @@ remain deterministic.
 | 007  | Pairing + trust                     | P1       | L      | 006        | DONE   |
 | 008  | Clipboard sync end-to-end           | P1       | M      | 007        | DONE   |
 | 009  | Daemon shell                        | P1       | M      | 008        | DONE   |
-| 010  | CLI shell + admin channel           | P1       | M      | 009        | TODO   |
+| 010  | CLI shell + admin channel           | P1       | M      | 009        | DONE   |
 | 011  | Desktop shell (Deno Desktop + tray) | P2       | L      | 010        | TODO   |
 | 012  | Docs + packaging v0.1.0             | P2       | M      | 011        | TODO   |
 
