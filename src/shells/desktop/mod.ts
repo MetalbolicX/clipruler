@@ -17,6 +17,7 @@ import { adminCommand } from "../cli/admin-client.ts";
 import { headlessGuard } from "./headless-guard.ts";
 import type { AdminEndpoint } from "../cli/admin-client.ts";
 import type { EnvelopeKind } from "../../protocol/envelope.ts";
+import type { UiPort } from "../../ports/ui.ts";
 
 
 /**
@@ -82,7 +83,7 @@ export async function desktopMain(args: string[]): Promise<number> {
   const deviceName = Deno.env.get("CLIPRULER_DEVICE_NAME") ?? Deno.hostname();
 
   // Build the desktop composition
-  let uiPort: import("../../ports/ui.ts").UiPort;
+  let uiPort: UiPort;
 
   if (Deno.build.os === "windows") {
     // Windows: stub UiPort (full Windows desktop support is a follow-up)
@@ -97,15 +98,32 @@ export async function desktopMain(args: string[]): Promise<number> {
     const adminSockPath = `${paths.dataDir}/admin.sock`;
     const endpoint: AdminEndpoint = { kind: "unix", path: adminSockPath };
 
-    // Create a placeholder webview for the bridge (webview lifecycle is TBD)
-    const { Webview: WebviewImpl } = await import("./webview.ts");
-    const placeholderWebview = new WebviewImpl("about:blank");
+    let webviewUiPort: UiPort;
+    try {
+      // Try to create a real webview bridge (requires Deno.BrowserWindow)
+      const { Webview: WebviewImpl } = await import("./webview.ts");
+      const placeholderWebview = new WebviewImpl("about:blank");
 
-    const bridge = new WebviewBridge(placeholderWebview, {
-      endpoint,
-      adminCommand: wrapAdminCommand,
-    });
-    uiPort = new DesktopUiPort(bridge);
+      const bridge = new WebviewBridge(placeholderWebview, {
+        endpoint,
+        adminCommand: wrapAdminCommand,
+      });
+      webviewUiPort = new DesktopUiPort(bridge);
+    } catch (err) {
+      // Deno.BrowserWindow not available (e.g., in test environments without
+      // --unstable-desktop). Fall back to stub UiPort so the daemon can still run.
+      console.warn(
+        `[desktop] Deno.BrowserWindow unavailable: ${err}. ` +
+          "Using stub UiPort — webview features disabled.",
+      );
+      webviewUiPort = {
+        presentPairingCode: () => Promise.resolve(),
+        confirmPairing: () => Promise.resolve(false),
+        notifyPaired: () => Promise.resolve(),
+        notifyPairingFailed: () => Promise.resolve(),
+      };
+    }
+    uiPort = webviewUiPort;
   }
 
   // Start the daemon with the desktop UiPort
