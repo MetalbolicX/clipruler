@@ -85,3 +85,38 @@ CLIPRULER_CLIPBOARD_TESTS=1 deno task test:clipboard
 Each smoke test probes for its required CLI tool and skips automatically when the tool is absent. On
 a headless Linux host the smoke tests will skip all real adapters and run only the null-adapter
 smoke.
+
+## Windows session requirements
+
+The PowerShell clipboard adapter (`windows-powershell`) relies on `Get-Clipboard` and
+`Set-Clipboard`, which access the clipboard of the interactive user session. These cmdlets require a
+graphical logon session and are not available to service accounts or headless processes.
+
+**Does not work under:**
+
+- `NT AUTHORITY\SYSTEM` (LocalSystem service account)
+- Scheduled tasks running as `SYSTEM`, `LocalService`, or `NetworkService`
+- Windows Server background roles without interactive logon
+
+This is a PowerShell/Windows limitation, not a clipruler bug.
+
+**Workarounds:**
+
+- Run the daemon from a user context that has an active interactive session (e.g., a user logged on
+  via `explorer.exe`)
+- Use a named user account instead of a system account for the scheduled task or service
+- On headless Windows servers, use the relay-only Tier 3 configuration (set neither
+  `WAYLAND_DISPLAY` nor `DISPLAY` and rely on `null` adapter — though note the null adapter must be
+  selected manually on Windows as the auto-detector will return `windows-powershell`)
+
+## Null adapter behavior
+
+On a Tier 3 headless relay node, clipruler uses `NullClipboardAdapter`:
+
+- `read()` returns `{ text: "", isPassword: false }` — empty string, never throws
+- `write()` is a silent no-op — returns `Promise.resolve()`, never throws
+- `subscribe()` returns a no-op unsubscribe function — subscribers never fire
+
+The daemon starts and runs normally as a relay, forwarding clipboard events between paired devices.
+No clipboard I/O occurs. This is intentional: a relay node does not own the clipboard and must not
+fail when no clipboard is available.
