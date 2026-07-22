@@ -29,7 +29,15 @@ jobs:
       - name: Build ${{ matrix.target }}
         run: |
           mkdir -p dist
-          deno compile --output dist/${{ matrix.artifact }}${{ matrix.archive_ext }} main.ts
+          deno compile \
+            --unstable-net \
+            --allow-env=CLIPRULER_DEVICE_NAME,OS,HOME,XDG_CONFIG_HOME,XDG_DATA_HOME,XDG_CACHE_HOME,WAYLAND_DISPLAY,DISPLAY \
+            --allow-sys=hostname \
+            --allow-read=$HOME/.config/clipruler,$HOME/.local/share/clipruler,$HOME/.cache/clipruler \
+            --allow-write=$HOME/.config/clipruler,$HOME/.local/share/clipruler,$HOME/.cache/clipruler \
+            --allow-net \
+            --output dist/${{ matrix.artifact }}${{ matrix.archive_ext }} \
+            main.ts
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/${{ matrix.artifact }}${{ matrix.archive_ext }}
