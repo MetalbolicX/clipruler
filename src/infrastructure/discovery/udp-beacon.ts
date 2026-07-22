@@ -105,6 +105,12 @@ export class UdpBeacon implements Discovery {
   async start(): Promise<void> {
     const listenDatagram = this.#listenDatagram ?? Deno.listenDatagram;
 
+    if (listenDatagram === undefined) {
+      this.#logger.warn("[UdpBeacon] Deno.listenDatagram is not available — UDP discovery disabled");
+      this.#stopped = true;
+      return;
+    }
+
     this.#listener = await listenDatagram({
       port: MULTICAST_PORT,
       hostname: "0.0.0.0",

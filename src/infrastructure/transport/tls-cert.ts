@@ -58,6 +58,8 @@ export const makeSelfSignedCert = async (
       name === "DataError" ||
       name === "NotSupportedError" ||
       name === "OperationError" ||
+      name === "SyntaxError" || // Deno 2.9: Ed25519 PKCS8 signing fails
+      name === "InvalidAccessError" || // Deno 2.9: Ed25519 signing algorithm mismatch
       name === "TypeError" // e.g., wrong key type for Ed25519 signing
     ) {
       // Fall through to P-256 fallback
@@ -237,6 +239,23 @@ export const makeSelfSignedCertP256 = async (
     derUtcTime(notAfter),
   ]);
 
+  // keyUsage extension: digitalSignature (bit 0, value 0x01)
+  // digitalSignature is bit 0 in the keyUsage bit string
+  const keyUsageBits = new Uint8Array([0x01]); // bit 0 = digitalSignature
+  const keyUsageBitString = derBitString(keyUsageBits);
+  // extnValue must be OCTET STRING wrapping the BIT STRING (RFC 5280)
+  const keyUsageExtValue = derBitString(keyUsageBits); // inner BIT STRING 03 02 01 01
+  const octetWrap = new Uint8Array([0x04, keyUsageExtValue.length, ...keyUsageExtValue]);
+  const keyUsageExt = derSequence([
+    derOid([2, 5, 29, 15]), // id-ce-keyUsage
+    new Uint8Array([0x01, 0x01, 0xff]), // BOOLEAN critical = TRUE
+    octetWrap, // OCTET STRING wrapping the BIT STRING
+  ]);
+
+  // Extensions SEQUENCE wrapped in [3] context tag
+  const extensions = derSequence([keyUsageExt]);
+  const extensionsContext = derContextTag(0xa3, extensions);
+
   // TBSCertificate
   const tbsCertificate = derSequence([
     derContextTag(0xa0, derIntegerU8(numberToUint8Array(2))), // Version v3 (value = 2 per RFC 5280)
@@ -246,6 +265,7 @@ export const makeSelfSignedCertP256 = async (
     validity,
     name, // Subject
     spkiBytes, // SubjectPublicKeyInfo
+    extensionsContext, // Extensions (critical keyUsage)
   ]);
 
   // Sign with P-256

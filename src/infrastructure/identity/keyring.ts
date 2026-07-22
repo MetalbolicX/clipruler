@@ -43,7 +43,7 @@ export class Keyring {
    * Both produce SPKI DER public keys and PKCS8 private keys.
    */
   async generate(): Promise<KeyPair> {
-    return await tryEd25519().catch(() => generateEcdsaP256());
+    return await generateEcdsaP256().catch(() => tryEd25519());
   }
 }
 
@@ -53,6 +53,18 @@ const tryEd25519 = async (): Promise<KeyPair> => {
     true,
     ["sign", "verify"],
   ) as CryptoKeyPair;
+
+  // Deno 2.9.3: key generation succeeds but signing may fail with InvalidAccessError.
+  // Test-sign a dummy payload to confirm the key is actually usable before returning it.
+  try {
+    await globalThis.crypto.subtle.sign(
+      { name: "Ed25519" } as Algorithm,
+      keyPair.privateKey,
+      new Uint8Array([0]),
+    );
+  } catch {
+    throw new Error("Ed25519 signing test failed");
+  }
 
   const publicKeyBytes = await exportSpki(keyPair.publicKey);
   return {

@@ -28,7 +28,7 @@
     "lint": "deno lint",
     "smoke": "deno run --allow-read main.ts --help",
     "desktop": "deno run -A main.ts -- desktop",
-    "build:linux": "deno compile --output dist/clipruler-linux-x64 main.ts"
+    "build:linux": "deno compile --output dist/clipruler-linux-x64 --allow-env=CLIPRULER_DEVICE_NAME,OS,HOME,XDG_CONFIG_HOME,XDG_DATA_HOME,XDG_CACHE_HOME,WAYLAND_DISPLAY,DISPLAY --allow-sys=hostname --allow-read=$HOME/.config/clipruler,$HOME/.local/share/clipruler,$HOME/.cache/clipruler --allow-write=$HOME/.config/clipruler,$HOME/.local/share/clipruler,$HOME/.cache/clipruler --allow-net main.ts"
   },
   "compilerOptions": {
     "strict": true,
