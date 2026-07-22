@@ -118,7 +118,11 @@ export class UdpBeacon implements Discovery {
     }) as Deno.DatagramConn;
 
     // Join the multicast group so we receive broadcast datagrams
-    this.#listener.joinMulticastV4(MULTICAST_ADDRESS, "0.0.0.0");
+    try {
+      await this.#listener.joinMulticastV4(MULTICAST_ADDRESS, "0.0.0.0");
+    } catch (err) {
+      this.#logger.warn(`[UdpBeacon] joinMulticastV4 failed: ${err}`);
+    }
 
     // Detach receive loop — unexpected errors are caught and logged
     this.#runRecvLoop().catch((err) => {
