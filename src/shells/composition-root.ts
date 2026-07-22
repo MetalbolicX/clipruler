@@ -60,12 +60,15 @@ export interface RunningDaemon {
  * Build and run the daemon, wiring all adapters.
  *
  * @param opts.deviceName - Human-readable device name (e.g. hostname)
+ * @param opts.uiPort    - Optional UiPort adapter; if omitted, a stub is used.
+ *                         The desktop shell passes a real DesktopUiPort here.
  * @returns RunningDaemon handle with adminSocketPath, tlsPort, and stop()
  */
 export async function buildAndRunDaemon(opts: {
   deviceName: string;
+  uiPort?: UiPort;
 }): Promise<RunningDaemon> {
-  const { deviceName } = opts;
+  const { deviceName, uiPort } = opts;
   const logger = new ConsoleLogger("daemon");
 
   // ---- 1. Directories ----
@@ -209,6 +212,7 @@ export async function buildAndRunDaemon(opts: {
 
   // Stub UI port for daemon context — pairing code is logged since there is no TUI in the daemon.
   // The pairing flow requires user interaction; the daemon-side just initiates the request.
+  // When a real UiPort is injected (desktop shell), use it instead.
   const stubUi: UiPort = {
     presentPairingCode(code: string): Promise<void> {
       logger.info("pairing: present code to user", { code });
@@ -224,6 +228,8 @@ export async function buildAndRunDaemon(opts: {
       return Promise.resolve();
     },
   };
+
+  const activeUi: UiPort = uiPort ?? stubUi;
 
   const adminLogger = logger.child("admin");
 
@@ -241,7 +247,7 @@ export async function buildAndRunDaemon(opts: {
           discovery: beacon,
           keys: keyStore,
           transport: transport,
-          ui: stubUi,
+          ui: activeUi,
         },
         makePublicKeyFingerprint(fingerprint),
         deviceName,
