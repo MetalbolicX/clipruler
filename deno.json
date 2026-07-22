@@ -26,7 +26,8 @@
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check",
     "lint": "deno lint",
-    "smoke": "deno run --allow-read main.ts --help"
+    "smoke": "deno run --allow-read main.ts --help",
+    "desktop": "deno run -A main.ts -- desktop"
   },
   "compilerOptions": {
     "strict": true,
