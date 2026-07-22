@@ -1,0 +1,36 @@
+# Known limitation: this workflow cannot be push-tested locally because the project has no remote configured.
+name: Release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write   # required for softprops/action-gh-release
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: clipruler-linux-x64
+            archive_ext: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: clipruler-windows-x64
+            archive_ext: ".exe"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.3
+      - name: Build ${{ matrix.target }}
+        run: |
+          mkdir -p dist
+          deno compile --output dist/${{ matrix.artifact }}${{ matrix.archive_ext }} main.ts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.artifact }}${{ matrix.archive_ext }}
+          generate_release_notes: true
