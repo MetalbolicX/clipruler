@@ -38,8 +38,9 @@ function makeMockBridge(): MockBridge {
   const mock: MockBridge = {
     published: [],
     confirmResolver: null,
-    publish: async (msg: PublishedMessage): Promise<void> => {
+    publish: (msg: PublishedMessage): Promise<void> => {
       mock.published.push(msg);
+      return Promise.resolve();
     },
     invoke: (method: string, params?: unknown): Promise<unknown> => {
       mock.invokeCalls.push({ method, params });

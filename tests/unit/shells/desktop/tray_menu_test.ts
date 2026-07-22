@@ -148,7 +148,11 @@ Deno.test("tray-menu: daemon up + N paired → device rows, Enable/Disable/Forge
   const items = tray.menuItems;
   const showItem = items.find((i) => i.label?.includes("Show"));
   assertEquals(showItem?.disabled, false, "Show enabled");
-  assertEquals(items.some((i) => i.label?.toLowerCase().includes("device")), true, "device row present");
+  assertEquals(
+    items.some((i) => i.label?.toLowerCase().includes("device")),
+    true,
+    "device row present",
+  );
   assertEquals(
     items.some((i) => i.label?.toLowerCase().includes("enable")),
     true,
@@ -211,7 +215,11 @@ Deno.test("tray-menu: Quit click → running.stop called and tray destroyed", as
   const adminCmd = makeMockAdminCommand();
   const endpoint: AdminEndpoint = { kind: "unix", path: "/tmp/test.sock" };
   let stopCalled = false;
-  const running = { stop: () => { stopCalled = true; } };
+  const running = {
+    stop: () => {
+      stopCalled = true;
+    },
+  };
   // @ts-ignore — _tray seam for test injection
   const menu = new TrayMenu({ _tray: tray, endpoint, adminCommand: adminCmd, running });
 
@@ -222,7 +230,11 @@ Deno.test("tray-menu: Quit click → running.stop called and tray destroyed", as
   quitItem?.click?.();
 
   assertEquals(stopCalled, true, "running.stop() must be called on Quit");
-  assertEquals(tray.menuItems.some((i) => i.label?.includes("Quitting")), true, "Quitting label shown");
+  assertEquals(
+    tray.menuItems.some((i) => i.label?.includes("Quitting")),
+    true,
+    "Quitting label shown",
+  );
 });
 
 Deno.test("tray-menu: trayId 0 logs warning but is nonfatal", async () => {

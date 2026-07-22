@@ -39,14 +39,21 @@ function makeMockWebview(): MockWebview {
     registered: false,
     publishedMessages: [],
     globalThis: {},
-    async register() { this.registered = true; },
-    async publish(message: unknown) {
+    register(): Promise<void> {
+      this.registered = true;
+      return Promise.resolve();
+    },
+    publish(message: unknown): Promise<void> {
       if (!this.registered) {
         throw new Error("Webview.publish() called before register(). Register the webview first.");
       }
       this.publishedMessages.push(message as PublishedMessage);
+      return Promise.resolve();
     },
-    async close() { this.registered = false; },
+    close(): Promise<void> {
+      this.registered = false;
+      return Promise.resolve();
+    },
     onReload(_handler) {},
   };
 }
@@ -70,7 +77,7 @@ function makeMockAdminCommand(): MockAdminCommand {
   };
 
   const fn = (
-    endpoint: AdminEndpoint,
+    _endpoint: AdminEndpoint,
     method: string,
     params?: unknown,
   ): Promise<unknown> => {
@@ -83,19 +90,25 @@ function makeMockAdminCommand(): MockAdminCommand {
   Object.defineProperties(fn, {
     callCount: {
       get: () => state.callCount,
-      set: (v) => { state.callCount = v; },
+      set: (v) => {
+        state.callCount = v;
+      },
       enumerable: true,
       configurable: true,
     },
     calls: {
       get: () => state.calls,
-      set: (v) => { state.calls = v; },
+      set: (v) => {
+        state.calls = v;
+      },
       enumerable: true,
       configurable: true,
     },
     responses: {
       get: () => state.responses,
-      set: (v) => { state.responses = v; },
+      set: (v) => {
+        state.responses = v;
+      },
       enumerable: true,
       configurable: true,
     },
@@ -127,7 +140,11 @@ Deno.test("webview-bridge: register() wires __clipruler.invoke into webview glob
   const bindings = webview.globalThis["__clipruler"] as {
     invoke: (method: string, params?: unknown) => Promise<unknown>;
   } | undefined;
-  assertEquals(typeof bindings?.invoke, "function", "__clipruler.invoke must be bound on webview globalThis");
+  assertEquals(
+    typeof bindings?.invoke,
+    "function",
+    "__clipruler.invoke must be bound on webview globalThis",
+  );
 });
 
 Deno.test("webview-bridge: publish(message) delivers to webview", async () => {
@@ -231,7 +248,11 @@ Deno.test("webview-bridge: unregister() calls bindings.unregister", async () => 
   await bridge.unregister();
 
   // After unregister, __clipruler should be null (from bindings.ts)
-  assertEquals(webview.globalThis["__clipruler"], null, "__clipruler must be set to null after unregister");
+  assertEquals(
+    webview.globalThis["__clipruler"],
+    null,
+    "__clipruler must be set to null after unregister",
+  );
 });
 
 Deno.test("webview-bridge: publish before register() rejects", async () => {
@@ -249,7 +270,7 @@ Deno.test("webview-bridge: publish before register() rejects", async () => {
 
   // webview.publish without register throws "before register"
   await assertRejects(
-    async () => bridge.publish({ type: "test" }),
+    () => bridge.publish({ type: "test" }),
     Error,
     "Webview.publish() called before register()",
   );

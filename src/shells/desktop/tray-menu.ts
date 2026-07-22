@@ -97,8 +97,8 @@ export class TrayMenu {
       // Access Deno.Tray via globalThis with explicit cast
       // deno-lint-ignore no-explicit-any
       const DenoTray = (globalThis as any).Deno?.Tray as
-        // deno-lint-ignore no-explicit-any
-        { new(opts: object): TrayHandle } | undefined;
+        | { new (opts: object): TrayHandle }
+        | undefined;
       if (!DenoTray) {
         throw new Error(
           "Deno.Tray is not available. Ensure you are running with --unstable-desktop.",
