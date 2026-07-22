@@ -50,7 +50,7 @@ remain deterministic.
 | 009  | Daemon shell                        | P1       | M      | 008        | DONE   |
 | 010  | CLI shell + admin channel           | P1       | M      | 009        | DONE   |
 | 011  | Desktop shell (Deno Desktop + tray) | P2       | L      | 010        | DONE   |
-| 012  | Docs + packaging v0.1.0             | P2       | M      | 011        | TODO   |
+| 012  | Docs + packaging v0.1.0             | P2       | M      | 011        | DONE   |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line
 rationale).
