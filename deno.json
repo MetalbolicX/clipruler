@@ -27,7 +27,8 @@
     "fmt:check": "deno fmt --check",
     "lint": "deno lint",
     "smoke": "deno run --allow-read main.ts --help",
-    "desktop": "deno run -A main.ts -- desktop"
+    "desktop": "deno run -A main.ts -- desktop",
+    "build:linux": "deno compile --output dist/clipruler-linux-x64 main.ts"
   },
   "compilerOptions": {
     "strict": true,
