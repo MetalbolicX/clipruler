@@ -70,3 +70,41 @@ Deno.test("main dispatch: unknown subcommand exits 2 (routed to cliMain)", async
   // cliMain receives unknown subcommand → exit 2
   assertEquals(result.code, 2, "unknown subcommand should exit 2");
 });
+
+Deno.test("main dispatch: 'desktop' routes to desktopMain (not cliMain)", async () => {
+  // Run with 'desktop' — should route to desktopMain (not cliMain).
+  // If routed to cliMain: stderr would say "Unknown subcommand: desktop"
+  const result = await runMain(["desktop"]);
+  assertEquals(
+    result.stderr.includes("Unknown subcommand: desktop"),
+    false,
+    "desktop arg should not be routed to cliMain",
+  );
+});
+
+Deno.test("main dispatch: 'desktop --help' routes to desktopMain and exits 0", async () => {
+  const result = await runMain(["desktop", "--help"]);
+  // desktopMain handles --help and returns 0
+  assertEquals(result.code, 0, "desktop --help should exit 0");
+});
+
+Deno.test("main dispatch: 'desktop' on headless Linux exits 1 with headless reason", async () => {
+  // If host has no display and is Linux, desktopMain headless guard fails → exit 1
+  const result = await runMain(["desktop"]);
+  // On headless Linux: exit 1 with headless reason; on display host: exit 0
+  // We verify routing: should NOT be routed to cliMain
+  assertEquals(
+    result.stderr.includes("Unknown subcommand: desktop"),
+    false,
+    "desktop should not be routed to cliMain",
+  );
+  // In headless env: code should be 1
+  if (!Deno.env.get("WAYLAND_DISPLAY") && !Deno.env.get("DISPLAY") && Deno.build.os === "linux") {
+    assertEquals(result.code, 1, "headless environment should exit 1");
+    assertEquals(
+      result.stderr.includes("No display server found"),
+      true,
+      "should report headless reason",
+    );
+  }
+});

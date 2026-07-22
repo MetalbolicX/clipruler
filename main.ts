@@ -37,6 +37,12 @@ if (args[0] === "daemon") {
   Deno.exit(0);
 }
 
+// MD-2 (plan-011): desktop route — evaluated before cliMain fallback.
+if (args[0] === "desktop") {
+  const { desktopMain } = await import("./src/shells/desktop/mod.ts");
+  Deno.exit(await desktopMain(args));
+}
+
 // MD-1 (plan-010): route all other args to cliMain.
 // cliMain returns an exit code; main.ts owns process exit.
 if (args[0] !== undefined) {
