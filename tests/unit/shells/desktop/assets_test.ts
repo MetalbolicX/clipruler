@@ -63,15 +63,15 @@ Deno.test("assets: index.html does NOT load external CDN scripts", () => {
   );
 });
 
-Deno.test("assets: main.js DOES use window.__clipruler.invoke", () => {
+Deno.test("assets: main.js DOES use globalThis.__clipruler.invoke", () => {
   assertStringIncludes(
     MAIN_JS,
-    "window.__clipruler.invoke",
-    `main.js must call window.__clipruler.invoke for all daemon communication`,
+    "__clipruler.invoke",
+    `main.js must call __clipruler.invoke for all daemon communication`,
   );
 });
 
-Deno.test("assets: main.js DOES clear window.__clipruler on beforeunload", () => {
+Deno.test("assets: main.js DOES clear globalThis.__clipruler on beforeunload", () => {
   // The bindings loss trap requires re-registering on reload; clearing the
   // reference on beforeunload lets the facade re-register cleanly.
   assertStringIncludes(
@@ -79,12 +79,12 @@ Deno.test("assets: main.js DOES clear window.__clipruler on beforeunload", () =>
     "beforeunload",
     `main.js must handle beforeunload to clear the bindings reference`,
   );
-  // The specific clearing: window.__clipruler = undefined
-  const clearPattern = /window\.__clipruler\s*=\s*undefined/;
+  // The specific clearing: globalThis.__clipruler = undefined
+  const clearPattern = /globalThis\.__clipruler\s*=\s*undefined/;
   assertEquals(
     clearPattern.test(MAIN_JS),
     true,
-    `main.js must set window.__clipruler = undefined on beforeunload`,
+    `main.js must set globalThis.__clipruler = undefined on beforeunload`,
   );
 });
 
