@@ -32,7 +32,32 @@ import { assertEquals } from "jsr:@std/assert@^1.0";
 async function runDesktop(
   opts?: { signal?: "SIGINT" | "SIGTERM"; forceHeadless?: boolean },
 ): Promise<{ code: number; stdout: string; stderr: string }> {
-  const env: Record<string, string> = { ...Deno.env.toObject() };
+  // Build minimal env — only vars that are set and non-empty
+  // This avoids needing blanket --allow-env while ensuring the subprocess
+  // has the same context as the test runner.
+  const env: Record<string, string> = {};
+
+  function addVar(key: string): void {
+    try {
+      const val = Deno.env.get(key);
+      if (val !== undefined && val.trim() !== "") {
+        env[key] = val;
+      }
+    } catch {
+      // Env var not accessible (not in allowlist) — skip
+    }
+  }
+
+  addVar("HOME");
+  addVar("XDG_DATA_HOME");
+  addVar("XDG_CONFIG_HOME");
+  addVar("XDG_CACHE_HOME");
+  addVar("XDG_RUNTIME_DIR");
+  addVar("USER");
+  addVar("OS");
+  addVar("CLIPRULER_DEVICE_NAME");
+  addVar("WAYLAND_DISPLAY");
+  addVar("DISPLAY");
 
   // Force headless for headless-guard tests
   if (opts?.forceHeadless) {

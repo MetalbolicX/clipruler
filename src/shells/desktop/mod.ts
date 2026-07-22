@@ -19,7 +19,6 @@ import type { AdminEndpoint } from "../cli/admin-client.ts";
 import type { EnvelopeKind } from "../../protocol/envelope.ts";
 import type { UiPort } from "../../ports/ui.ts";
 
-
 /**
  * Adapter: converts AdminCommandFn signature (method + params)
  * to adminCommand signature (EnvelopeKind + payload).
