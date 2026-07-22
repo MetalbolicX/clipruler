@@ -49,7 +49,7 @@ remain deterministic.
 | 008  | Clipboard sync end-to-end           | P1       | M      | 007        | DONE   |
 | 009  | Daemon shell                        | P1       | M      | 008        | DONE   |
 | 010  | CLI shell + admin channel           | P1       | M      | 009        | DONE   |
-| 011  | Desktop shell (Deno Desktop + tray) | P2       | L      | 010        | TODO   |
+| 011  | Desktop shell (Deno Desktop + tray) | P2       | L      | 010        | ACTIVE |
 | 012  | Docs + packaging v0.1.0             | P2       | M      | 011        | TODO   |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line
