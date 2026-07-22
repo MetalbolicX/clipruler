@@ -14,7 +14,7 @@ Deno.test("KeyStore interface: all five methods are callable", () => {
   const mock: KeyStore = {
     getOrCreateLocal(): Promise<PrivateKeyMaterial> {
       return Promise.resolve({
-        format: "pkcs8-spki",
+        format: "jwk-spki",
         algorithm: "Ed25519",
         privateKeyBase64: "",
         publicKeyBase64: "",
@@ -41,12 +41,12 @@ Deno.test("KeyStore interface: all five methods are callable", () => {
  */
 Deno.test("PrivateKeyMaterial has required fields", () => {
   const mat: PrivateKeyMaterial = {
-    format: "pkcs8-spki",
+    format: "jwk-spki",
     algorithm: "Ed25519",
     privateKeyBase64: "YWJj",
     publicKeyBase64: "ZGVm",
   };
-  assertEquals(mat.format, "pkcs8-spki");
+  assertEquals(mat.format, "jwk-spki");
   assertEquals(mat.algorithm, "Ed25519");
   assertEquals(typeof mat.privateKeyBase64, "string");
   assertEquals(typeof mat.publicKeyBase64, "string");
@@ -59,7 +59,7 @@ Deno.test("getPeerPublicKey resolves null for unknown peer", async () => {
   const mock: KeyStore = {
     getOrCreateLocal() {
       return Promise.resolve({
-        format: "pkcs8-spki",
+        format: "jwk-spki",
         algorithm: "Ed25519",
         privateKeyBase64: "x",
         publicKeyBase64: "y",
@@ -86,7 +86,7 @@ Deno.test("storePeerPublicKey and deletePeerPublicKey return void", async () => 
   const mock: KeyStore = {
     getOrCreateLocal() {
       return Promise.resolve({
-        format: "pkcs8-spki",
+        format: "jwk-spki",
         algorithm: "Ed25519",
         privateKeyBase64: "x",
         publicKeyBase64: "y",

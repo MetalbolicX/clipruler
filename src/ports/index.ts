@@ -9,7 +9,7 @@
 export type { Logger, LogLevel } from "./logger.ts";
 
 // KeyStore port
-export type { KeyStore, PrivateKeyMaterial } from "./key-store.ts";
+export type { KeyPairAlgorithm, KeyStore, PrivateKeyMaterial } from "./key-store.ts";
 
 // DeviceRepository port
 export type { DeviceRepository, StoredDevice } from "./device-repository.ts";

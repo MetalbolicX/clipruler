@@ -5,7 +5,7 @@
  * to the filesystem using the KeyStore port contract.
  *
  * File layout:
- * - <configDir>/clipruler/identity.key   — own key pair (JSON: { algorithm, pkcs8Base64 })
+ * - <configDir>/clipruler/identity.key   — own key pair (JSON: { algorithm, jwk })
  * - <configDir>/clipruler/fingerprints/  — peer public key blobs keyed by fingerprint
  *
  * The own key pair is stored separately from the state file so it survives
@@ -58,8 +58,8 @@ export class FileKeyStore implements KeyStore {
 
     try {
       const content = await Deno.readTextFile(this.identityFile);
-      const parsed = JSON.parse(content) as { algorithm: string; pkcs8Base64: string };
-      kp = await importKeyPair(parsed.algorithm as "Ed25519" | "ECDSA-P256", parsed.pkcs8Base64);
+      const parsed = JSON.parse(content) as { algorithm: string; jwk: object };
+      kp = await importKeyPair(parsed.algorithm as "Ed25519" | "ECDSA-P256", parsed.jwk);
     } catch (err) {
       if (err instanceof Deno.errors.NotFound) {
         const { Keyring } = await import("./keyring.ts");
@@ -82,8 +82,8 @@ export class FileKeyStore implements KeyStore {
 
     try {
       const content = await Deno.readTextFile(this.identityFile);
-      const parsed = JSON.parse(content) as { algorithm: string; pkcs8Base64: string };
-      kp = await importKeyPair(parsed.algorithm as "Ed25519" | "ECDSA-P256", parsed.pkcs8Base64);
+      const parsed = JSON.parse(content) as { algorithm: string; jwk: object };
+      kp = await importKeyPair(parsed.algorithm as "Ed25519" | "ECDSA-P256", parsed.jwk);
     } catch (err) {
       if (err instanceof Deno.errors.NotFound) {
         const { Keyring } = await import("./keyring.ts");
@@ -100,15 +100,14 @@ export class FileKeyStore implements KeyStore {
 
   /**
    * Persists the given key pair to identity.key as JSON:
-   * { algorithm: "Ed25519" | "ECDSA-P256", pkcs8Base64: "<base64>" }
+   * { algorithm: "Ed25519" | "ECDSA-P256", jwk: { ... } }
    */
   async saveOwnKeyPair(kp: KeyPair): Promise<void> {
-    const pkcs8Der = await globalThis.crypto.subtle.exportKey("pkcs8", kp.privateKey);
-    const pkcs8Base64 = encodeBase64(new Uint8Array(pkcs8Der));
+    const jwk = await globalThis.crypto.subtle.exportKey("jwk", kp.privateKey);
 
     const content = JSON.stringify({
       algorithm: kp.algorithm,
-      pkcs8Base64,
+      jwk,
     });
 
     await ensureDir(this.appPaths.configDir);
@@ -225,13 +224,13 @@ const ensureDir = async (path: string): Promise<void> => {
 };
 
 const toPrivateKeyMaterial = async (kp: KeyPair): Promise<PrivateKeyMaterial> => {
-  const pkcs8Der = await globalThis.crypto.subtle.exportKey("pkcs8", kp.privateKey);
-  const pkcs8Bytes = new Uint8Array(pkcs8Der);
-  const privateKeyBase64 = encodeBase64(pkcs8Bytes).replace(/\n/g, "");
+  const jwk = await globalThis.crypto.subtle.exportKey("jwk", kp.privateKey);
+  const jwkJson = JSON.stringify(jwk);
+  const privateKeyBase64 = encodeBase64(new TextEncoder().encode(jwkJson));
   const publicKeyBase64 = encodeBase64(kp.publicKey).replace(/\n/g, "");
   return {
-    format: "pkcs8-spki",
-    algorithm: "Ed25519",
+    format: "jwk-spki",
+    algorithm: kp.algorithm,
     privateKeyBase64,
     publicKeyBase64,
   };
@@ -239,27 +238,21 @@ const toPrivateKeyMaterial = async (kp: KeyPair): Promise<PrivateKeyMaterial> =>
 
 const importKeyPair = async (
   algorithm: "Ed25519" | "ECDSA-P256",
-  pkcs8Base64: string,
+  jwk: JsonWebKey,
 ): Promise<KeyPair> => {
-  const binary = atob(pkcs8Base64);
-  const pkcs8Der = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    pkcs8Der[i] = binary.charCodeAt(i);
-  }
-
   const alg = algorithm === "Ed25519"
     ? { name: "Ed25519" } as const
     : { name: "ECDSA", namedCurve: "P-256" } as const;
 
-  const privateKey = await globalThis.crypto.subtle.importKey(
-    "pkcs8",
-    pkcs8Der,
-    alg,
-    true,
-    ["sign", "verify"],
-  );
+  // Import private key from JWK (must use JWK's own key_ops to avoid conflict)
+  const keyOps = (jwk.key_ops ?? ["sign"]) as KeyUsage[];
+  const privateKey = await globalThis.crypto.subtle.importKey("jwk", jwk, alg, true, keyOps);
 
-  const publicKeySpkiDer = await globalThis.crypto.subtle.exportKey("spki", privateKey);
+  // Derive public key SPKI DER by importing a public-only JWK (strip 'd' field)
+  const { d: _d, key_ops: _ko, ext: _ext, ...pubJwk } = jwk;
+  const publicJwk = { ...pubJwk, key_ops: ["verify"] as KeyUsage[], ext: true } as JsonWebKey;
+  const pubKey = await globalThis.crypto.subtle.importKey("jwk", publicJwk, alg, true, ["verify" as KeyUsage]);
+  const publicKeySpkiDer = await globalThis.crypto.subtle.exportKey("spki", pubKey);
 
   return {
     algorithm,

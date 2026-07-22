@@ -5,10 +5,12 @@
  * and peer public key storage.
  */
 
+export type KeyPairAlgorithm = "Ed25519" | "ECDSA-P256";
+
 export interface PrivateKeyMaterial {
-  readonly format: "pkcs8-spki";
-  readonly algorithm: "Ed25519";
-  /** Base64-encoded PKCS8 private key bytes. */
+  readonly format: "jwk-spki";
+  readonly algorithm: KeyPairAlgorithm;
+  /** Base64-encoded JWK JSON containing the private key. */
   readonly privateKeyBase64: string;
   /** Base64-encoded SPKI public key bytes. */
   readonly publicKeyBase64: string;

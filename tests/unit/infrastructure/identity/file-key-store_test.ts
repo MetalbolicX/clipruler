@@ -83,7 +83,7 @@ Deno.test("loadOwnKeyPair() returns the same key pair on repeated calls", async 
   }
 });
 
-Deno.test("saveOwnKeyPair() exports private key as PKCS8 and persists to identity.key", async (t) => {
+Deno.test("saveOwnKeyPair() exports private key as JWK and persists to identity.key", async (t) => {
   const { appPaths, cleanup } = await makeTempAppPaths(t.name);
   try {
     const stateStore = new StateStore(appPaths);
@@ -91,20 +91,25 @@ Deno.test("saveOwnKeyPair() exports private key as PKCS8 and persists to identit
 
     const kp = await keyStore.loadOwnKeyPair();
 
-    // Re-read the file content directly to verify it's base64-encoded PKCS8
+    // Re-read the file content directly to verify it's JWK
     const expectedKeyFile = appPaths.configDir + "/identity.key";
     const fileContent = await Deno.readTextFile(expectedKeyFile);
-    const parsed = JSON.parse(fileContent) as { algorithm: string; pkcs8Base64: string };
+    const parsed = JSON.parse(fileContent) as { algorithm: string; jwk: { d: string; x: string; crv: string } };
 
     assertEquals(typeof parsed.algorithm, "string");
     assertEquals(parsed.algorithm, kp.algorithm);
-    assertEquals(typeof parsed.pkcs8Base64, "string");
-    assertEquals(parsed.pkcs8Base64.length > 0, true);
-
-    // pkcs8Base64 should be decodable
-    const decoded = decodeBase64(parsed.pkcs8Base64);
-    assertEquals(decoded instanceof Uint8Array, true);
-    assertEquals(decoded.length > 0, true);
+    assertEquals(typeof parsed.jwk, "object");
+    assertEquals(typeof parsed.jwk.d, "string");
+    assertEquals(parsed.jwk.d.length > 0, true);
+    assertEquals(typeof parsed.jwk.x, "string");
+    assertEquals(parsed.jwk.x.length > 0, true);
+    assertEquals(typeof parsed.jwk.crv, "string");
+    // crv should match algorithm: Ed25519 or P-256
+    if (parsed.algorithm === "Ed25519") {
+      assertEquals(parsed.jwk.crv, "Ed25519");
+    } else {
+      assertEquals(parsed.jwk.crv, "P-256");
+    }
   } finally {
     cleanup();
   }
@@ -192,16 +197,3 @@ Deno.test("deleteTrustedDevice removes a previously added device", async (t) => 
     cleanup();
   }
 });
-
-// ---------------------------------------------------------------------------
-// Helper
-// ---------------------------------------------------------------------------
-
-function decodeBase64(b64: string): Uint8Array {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}

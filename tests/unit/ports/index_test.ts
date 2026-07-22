@@ -42,7 +42,7 @@ Deno.test("KeyStore and PrivateKeyMaterial are reachable via barrel", () => {
   const _store: KeyStore = {
     getOrCreateLocal() {
       return Promise.resolve({
-        format: "pkcs8-spki" as const,
+        format: "jwk-spki" as const,
         algorithm: "Ed25519" as const,
         privateKeyBase64: "",
         publicKeyBase64: "",
@@ -59,7 +59,7 @@ Deno.test("KeyStore and PrivateKeyMaterial are reachable via barrel", () => {
     },
   };
   const _mat: PrivateKeyMaterial = {
-    format: "pkcs8-spki",
+    format: "jwk-spki",
     algorithm: "Ed25519",
     privateKeyBase64: "test",
     publicKeyBase64: "test",

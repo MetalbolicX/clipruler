@@ -230,7 +230,7 @@ export class StubKeyStore implements KeyStore {
 
   constructor(material?: Partial<PrivateKeyMaterial>) {
     this.material = {
-      format: "pkcs8-spki",
+      format: "jwk-spki",
       algorithm: "Ed25519",
       privateKeyBase64: material?.privateKeyBase64 ??
         "dGVzdC1wcml2YXRlLWtleS1iYXNlNjQ=",
