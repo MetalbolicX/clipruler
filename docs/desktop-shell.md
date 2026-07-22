@@ -1,5 +1,7 @@
 # Desktop Shell — Clipruler v0.1.0
 
+**Status: v0.1.0 — Experimental (Deno.Tray + Deno.BrowserWindow)**
+
 The desktop shell provides a graphical user interface for the clipboard sync daemon using Deno's
 experimental BrowserWindow API and a system tray.
 
@@ -132,6 +134,10 @@ main.ts ("desktop")
 ```
 
 See [Plan 011](../plans/011-desktop-shell.md) for full design rationale.
+
+## See also
+
+- [Plan 011 — Desktop Shell](../plans/011-desktop-shell.md)
 
 ## Slice History
 
