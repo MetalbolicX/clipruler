@@ -21,3 +21,6 @@ Thumbs.db
 
 # Plans scratch
 .scratch/
+
+# CodeGraph index
+.codegraph/

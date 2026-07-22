@@ -28,7 +28,7 @@ export type Version = {
 // Returns: -1 (a < b) | 0 (a == b) | 1 (a > b)
 // ---------------------------------------------------------------------------
 
-export function compareVersions(a: Version, b: Version): -1 | 0 | 1 {
+export const compareVersions = (a: Version, b: Version): -1 | 0 | 1 => {
   if (a.counter !== b.counter) {
     return a.counter > b.counter ? 1 : -1;
   }
@@ -38,7 +38,7 @@ export function compareVersions(a: Version, b: Version): -1 | 0 | 1 {
   if (aId < bId) return -1;
   if (aId > bId) return 1;
   return 0;
-}
+};
 
 // Re-exports for test convenience
 export { makeDeviceId } from "./device.ts";

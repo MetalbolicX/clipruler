@@ -16,12 +16,12 @@ import { bytesToHex } from "../../domain/device.ts";
  * @param publicKeySpkiDer - Uint8Array of SPKI DER-encoded public key bytes
  * @returns 64-character lowercase hex string (SHA-256 digest)
  */
-export async function derivePublicKeyFingerprint(
+export const derivePublicKeyFingerprint = async (
   publicKeySpkiDer: Uint8Array,
-): Promise<string> {
+): Promise<string> => {
   const digest = await globalThis.crypto.subtle.digest(
     "SHA-256",
     publicKeySpkiDer as BufferSource,
   );
   return bytesToHex(digest);
-}
+};

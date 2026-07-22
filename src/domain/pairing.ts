@@ -24,7 +24,7 @@ export type PairEvent = "RequestPairing" | "PeerRequested" | "Accept" | "Revoke"
  * Immutable FSM transition.
  * Returns the next state, or throws if the (state, event) pair is invalid.
  */
-export function transition(current: PairState, event: PairEvent): PairState {
+export const transition = (current: PairState, event: PairEvent): PairState => {
   switch (current) {
     case "NotPaired":
       switch (event) {
@@ -60,4 +60,4 @@ export function transition(current: PairState, event: PairEvent): PairState {
           throw new Error(`Invalid transition: ${current} + ${event}`);
       }
   }
-}
+};

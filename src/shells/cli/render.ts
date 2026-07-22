@@ -24,7 +24,7 @@ import type { AdminResponse } from "./admin-client.ts";
  *   Available devices:
  *     - {name} ({fingerprint}) at {remoteAddress}
  */
-export async function renderDevices(view: DeviceListView): Promise<void> {
+export const renderDevices = async (view: DeviceListView): Promise<void> => {
   const out = new TextEncoder();
   const writer = Deno.stdout.writable.getWriter();
 
@@ -58,7 +58,7 @@ export async function renderDevices(view: DeviceListView): Promise<void> {
   }
 
   writer.releaseLock();
-}
+};
 
 // ---------------------------------------------------------------------------
 // renderStatus — prints daemon identity
@@ -72,14 +72,14 @@ export async function renderDevices(view: DeviceListView): Promise<void> {
  *   PID: {pid}
  *   Admin endpoint: {adminEndpoint}
  */
-export async function renderStatus(
+export const renderStatus = async (
   view: AdminResponse<{
     deviceName: string;
     tlsPort: number;
     pid: number;
     adminEndpoint: string;
   }>,
-): Promise<void> {
+): Promise<void> => {
   const out = new TextEncoder();
   const writer = Deno.stdout.writable.getWriter();
 
@@ -103,7 +103,7 @@ export async function renderStatus(
   }
 
   writer.releaseLock();
-}
+};
 
 // ---------------------------------------------------------------------------
 // renderPairResult — echoes the pair response
@@ -113,9 +113,9 @@ export async function renderStatus(
  * Render the pair response to stdout.
  * Prints the pairing code or message returned by the daemon.
  */
-export async function renderPairResult(
+export const renderPairResult = async (
   view: AdminResponse<{ pairingCode?: string; message?: string }>,
-): Promise<void> {
+): Promise<void> => {
   const out = new TextEncoder();
   const writer = Deno.stdout.writable.getWriter();
 
@@ -135,4 +135,4 @@ export async function renderPairResult(
   }
 
   writer.releaseLock();
-}
+};

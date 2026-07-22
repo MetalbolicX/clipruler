@@ -15,13 +15,13 @@
 const HEADLESS_REASON =
   "No display server found. Use 'clipruler daemon' + 'clipruler list' instead.";
 
-function readEnv(key: string): string | undefined {
+const readEnv = (key: string): string | undefined => {
   return Deno.env.get(key);
-}
+};
 
-function isNonBlank(s: string | undefined): boolean {
+const isNonBlank = (s: string | undefined): boolean => {
   return s !== undefined && s.trim() !== "";
-}
+};
 
 /**
  * Check whether the current environment has a display server available.
@@ -30,9 +30,9 @@ function isNonBlank(s: string | undefined): boolean {
  *   { ok: true }  — display is available (or non-Linux platform)
  *   { ok: false, reason: string } — no display server found
  */
-export function headlessGuard(
+export const headlessGuard = (
   getBuildOs: () => string = () => Deno.build.os,
-): { ok: boolean; reason?: string } {
+): { ok: boolean; reason?: string } => {
   const os = getBuildOs();
 
   // Non-Linux platforms are always fine — desktop environments are expected.
@@ -52,4 +52,4 @@ export function headlessGuard(
   }
 
   return { ok: false, reason: HEADLESS_REASON };
-}
+};

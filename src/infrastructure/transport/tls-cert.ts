@@ -46,9 +46,9 @@ export interface SelfSignedCertResultWithFingerprint extends SelfSignedCertResul
  *
  * @throws DerGenerationError if certificate generation fails.
  */
-export async function makeSelfSignedCert(
+export const makeSelfSignedCert = async (
   keyPair: Awaited<ReturnType<Keyring["generate"]>>,
-): Promise<SelfSignedCertResult> {
+): Promise<SelfSignedCertResult> => {
   // Try Ed25519 first
   try {
     return await makeSelfSignedCertEd25519(keyPair);
@@ -68,7 +68,7 @@ export async function makeSelfSignedCert(
 
   // Fallback: ECDSA P-256 (locally generated)
   return makeSelfSignedCertP256();
-}
+};
 
 // ---------------------------------------------------------------------------
 // DerGenerationError — thrown on broken DER, never silent
@@ -86,18 +86,18 @@ export class DerGenerationError extends Error {
 // Helper — undefined-safe byte reader
 // ---------------------------------------------------------------------------
 
-function ub(arr: Uint8Array, index: number): number {
+const ub = (arr: Uint8Array, index: number): number => {
   const v = arr[index];
   return v === undefined ? 0 : v;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Ed25519 path
 // ---------------------------------------------------------------------------
 
-async function makeSelfSignedCertEd25519(
+const makeSelfSignedCertEd25519 = async (
   keyPair: Awaited<ReturnType<Keyring["generate"]>>,
-): Promise<SelfSignedCertResult> {
+): Promise<SelfSignedCertResult> => {
   // Export private key in PKCS8 format for Ed25519 signing
   const pkcs8Der = await globalThis.crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
   const pkcs8Bytes = new Uint8Array(pkcs8Der);
@@ -172,7 +172,7 @@ async function makeSelfSignedCertEd25519(
   const keyPem = pkcs8ToPem(pkcs8Bytes);
 
   return { certPem, keyPem };
-}
+};
 
 // ---------------------------------------------------------------------------
 // P-256 fallback path
@@ -188,9 +188,9 @@ async function makeSelfSignedCertEd25519(
  *                           matches the provided key pair (important when the
  *                           fingerprint is derived from the public key separately).
  */
-export async function makeSelfSignedCertP256(
+export const makeSelfSignedCertP256 = async (
   existingKeyPair?: CryptoKeyPair,
-): Promise<SelfSignedCertResultWithFingerprint> {
+): Promise<SelfSignedCertResultWithFingerprint> => {
   // Use existing key pair or generate a new one
   const p256KeyPair = existingKeyPair ??
     (await globalThis.crypto.subtle.generateKey(
@@ -270,7 +270,7 @@ export async function makeSelfSignedCertP256(
   const keyPem = pkcs8ToPem(pkcs8Bytes);
 
   return { certPem, keyPem, fingerprint };
-}
+};
 
 // ---------------------------------------------------------------------------
 // DER encoding primitives
@@ -281,7 +281,7 @@ export async function makeSelfSignedCertP256(
  * Arc values 0-127 are encoded as a single byte.
  * Arc values >= 128 are encoded as multiple bytes with continuation bits.
  */
-function derOid(oid: number[]): Uint8Array {
+const derOid = (oid: number[]): Uint8Array => {
   const bytes: number[] = [];
   // First byte: (first * 40) + second arc
   const arc0 = oid[0] ?? 0;
@@ -310,12 +310,12 @@ function derOid(oid: number[]): Uint8Array {
     }
   }
   return new Uint8Array([0x06, bytes.length, ...bytes]);
-}
+};
 
 /**
  * Encode an ASN.1 SEQUENCE.
  */
-function derSequence(contents: Uint8Array[]): Uint8Array {
+const derSequence = (contents: Uint8Array[]): Uint8Array => {
   const body = concatBytes(...contents);
   const len = body.length;
   if (len < 128) {
@@ -325,12 +325,12 @@ function derSequence(contents: Uint8Array[]): Uint8Array {
   } else {
     return concatBytes(new Uint8Array([0x30, 0x82, (len >> 8) & 0xff, len & 0xff]), body);
   }
-}
+};
 
 /**
  * Encode an ASN.1 SET.
  */
-function derSet(contents: Uint8Array[]): Uint8Array {
+const derSet = (contents: Uint8Array[]): Uint8Array => {
   const body = concatBytes(...contents);
   const len = body.length;
   if (len < 128) {
@@ -340,13 +340,13 @@ function derSet(contents: Uint8Array[]): Uint8Array {
   } else {
     return concatBytes(new Uint8Array([0x31, 0x82, (len >> 8) & 0xff, len & 0xff]), body);
   }
-}
+};
 
 /**
  * Encode an ASN.1 INTEGER from a Uint8Array.
  * Always encodes as positive (adds leading 0x00 if high bit is set).
  */
-function derInteger(value: Uint8Array): Uint8Array {
+const derInteger = (value: Uint8Array): Uint8Array => {
   // Ensure positive: if first byte has high bit set, prepend 0x00
   let body: Uint8Array;
   const first = ub(value, 0);
@@ -363,26 +363,26 @@ function derInteger(value: Uint8Array): Uint8Array {
   } else {
     return concatBytes(new Uint8Array([0x02, 0x82, (len >> 8) & 0xff, len & 0xff]), body);
   }
-}
+};
 
 /**
  * Encode a small integer (0-255) as a big-endian Uint8Array.
  */
-function numberToUint8Array(n: number): Uint8Array {
+const numberToUint8Array = (n: number): Uint8Array => {
   return new Uint8Array([n]);
-}
+};
 
 /**
  * Encode an ASN.1 INTEGER from a small integer value.
  */
-function derIntegerU8(value: Uint8Array): Uint8Array {
+const derIntegerU8 = (value: Uint8Array): Uint8Array => {
   return derInteger(value);
-}
+};
 
 /**
  * Encode an ASN.1 UTF8String.
  */
-function _derUtf8String(value: string): Uint8Array {
+const _derUtf8String = (value: string): Uint8Array => {
   const body = new TextEncoder().encode(value);
   const len = body.length;
   if (len < 128) {
@@ -392,12 +392,12 @@ function _derUtf8String(value: string): Uint8Array {
   } else {
     return concatBytes(new Uint8Array([0x0c, 0x82, (len >> 8) & 0xff, len & 0xff]), body);
   }
-}
+};
 
 /**
  * Encode an ASN.1 PrintableString.
  */
-function derPrintableString(value: string): Uint8Array {
+const derPrintableString = (value: string): Uint8Array => {
   const body = new TextEncoder().encode(value);
   const len = body.length;
   if (len < 128) {
@@ -407,19 +407,19 @@ function derPrintableString(value: string): Uint8Array {
   } else {
     return concatBytes(new Uint8Array([0x13, 0x82, (len >> 8) & 0xff, len & 0xff]), body);
   }
-}
+};
 
 /**
  * Encode an ASN.1 NULL value.
  */
-function derNull(): Uint8Array {
+const derNull = (): Uint8Array => {
   return new Uint8Array([0x05, 0x00]);
-}
+};
 
 /**
  * Encode an ASN.1 UTC Time (YYMMDDhhmmssZ).
  */
-function derUtcTime(date: Date): Uint8Array {
+const derUtcTime = (date: Date): Uint8Array => {
   const y = date.getUTCFullYear();
   const m = date.getUTCMonth() + 1;
   const d = date.getUTCDate();
@@ -444,12 +444,12 @@ function derUtcTime(date: Date): Uint8Array {
   ].join("");
   const body = new TextEncoder().encode(s);
   return concatBytes(new Uint8Array([0x17, body.length]), body);
-}
+};
 
 /**
  * Encode an ASN.1 context-specific tag (EXPLICIT).
  */
-function derContextTag(tag: number, content: Uint8Array): Uint8Array {
+const derContextTag = (tag: number, content: Uint8Array): Uint8Array => {
   const len = content.length;
   if (len < 128) {
     return concatBytes(new Uint8Array([0xa0 | tag, len]), content);
@@ -458,13 +458,13 @@ function derContextTag(tag: number, content: Uint8Array): Uint8Array {
   } else {
     return concatBytes(new Uint8Array([0xa0 | tag, 0x82, (len >> 8) & 0xff, len & 0xff]), content);
   }
-}
+};
 
 /**
  * Encode an ASN.1 BIT STRING.
  * bitString bytes contain the raw bits, with unused bits = 0 in the first byte.
  */
-function derBitString(bits: Uint8Array): Uint8Array {
+const derBitString = (bits: Uint8Array): Uint8Array => {
   const len = bits.length + 1; // +1 for the "unused bits" byte
   if (len < 128) {
     return concatBytes(new Uint8Array([0x03, len, 0x00]), bits);
@@ -476,24 +476,24 @@ function derBitString(bits: Uint8Array): Uint8Array {
       bits,
     );
   }
-}
+};
 
 // ---------------------------------------------------------------------------
 // DER → PEM conversion
 // ---------------------------------------------------------------------------
 
-function derToPem(der: Uint8Array, label: string): string {
+const derToPem = (der: Uint8Array, label: string): string => {
   const base64 = btoa(String.fromCharCode(...der));
   const lines: string[] = [];
   for (let i = 0; i < base64.length; i += 64) {
     lines.push(base64.slice(i, i + 64));
   }
   return `-----BEGIN ${label}-----\n${lines.join("\n")}\n-----END ${label}-----\n`;
-}
+};
 
-function pkcs8ToPem(pkcs8: Uint8Array): string {
+const pkcs8ToPem = (pkcs8: Uint8Array): string => {
   return derToPem(pkcs8, "PRIVATE KEY");
-}
+};
 
 // ---------------------------------------------------------------------------
 // ECDSA DER signature → raw r||s conversion
@@ -504,7 +504,7 @@ function pkcs8ToPem(pkcs8: Uint8Array): string {
  * DER format: SEQUENCE { INTEGER r, INTEGER s }
  * Each INTEGER is variable-length; P-256 r and s are each 32 bytes.
  */
-function _convertDerSignatureToRaw(der: Uint8Array): Uint8Array {
+const _convertDerSignatureToRaw = (der: Uint8Array): Uint8Array => {
   let offset = 0;
 
   // SEQUENCE tag
@@ -571,9 +571,9 @@ function _convertDerSignatureToRaw(der: Uint8Array): Uint8Array {
   const sPadded = padTo32(s);
 
   return concatBytes(rPadded, sPadded);
-}
+};
 
-function padTo32(bytes: Uint8Array): Uint8Array {
+const padTo32 = (bytes: Uint8Array): Uint8Array => {
   if (bytes.length === 32) return bytes;
   if (bytes.length > 32) {
     return bytes.subarray(bytes.length - 32);
@@ -581,13 +581,13 @@ function padTo32(bytes: Uint8Array): Uint8Array {
   const padded = new Uint8Array(32);
   padded.set(bytes, 32 - bytes.length);
   return padded;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Utilities
 // ---------------------------------------------------------------------------
 
-function concatBytes(...arrays: Uint8Array[]): Uint8Array {
+const concatBytes = (...arrays: Uint8Array[]): Uint8Array => {
   const totalLen = arrays.reduce((acc, a) => acc + a.byteLength, 0);
   const result = new Uint8Array(totalLen);
   let offset = 0;
@@ -596,9 +596,9 @@ function concatBytes(...arrays: Uint8Array[]): Uint8Array {
     offset += a.byteLength;
   }
   return result;
-}
+};
 
-function generateRandomSerial(): Uint8Array {
+const generateRandomSerial = (): Uint8Array => {
   const serial = new Uint8Array(20);
   globalThis.crypto.getRandomValues(serial);
   const first = ub(serial, 0);
@@ -606,4 +606,4 @@ function generateRandomSerial(): Uint8Array {
   // Ensure non-zero
   serial[0] = masked === 0 ? 1 : masked;
   return serial;
-}
+};

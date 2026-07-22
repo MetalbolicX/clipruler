@@ -24,14 +24,14 @@ import type { AdminEndpoint } from "./admin-client.ts";
 // Admin endpoint resolution
 // ---------------------------------------------------------------------------
 
-async function resolveEndpoint(): Promise<AdminEndpoint | null> {
+const resolveEndpoint = async (): Promise<AdminEndpoint | null> => {
   const paths = resolveAppPaths();
   try {
     return await readAdminEndpoint(paths.adminEndpointFile);
   } catch {
     return null;
   }
-}
+};
 
 // ---------------------------------------------------------------------------
 // CLI main
@@ -54,7 +54,7 @@ async function resolveEndpoint(): Promise<AdminEndpoint | null> {
  *   1 — daemon error (request failed or threw)
  *   2 — daemon not reachable / unknown subcommand / usage error
  */
-export async function cliMain(args: string[]): Promise<number> {
+export const cliMain = async (args: string[]): Promise<number> => {
   const flags = parseArgs(args, {
     boolean: ["help", "h"],
     string: [],
@@ -107,17 +107,17 @@ export async function cliMain(args: string[]): Promise<number> {
     console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
     return 1;
   }
-}
+};
 
 /**
  * Dispatch a subcommand. Extracted for top-level error handling.
  * Returns an exit code.
  */
-async function dispatchSubcommand(
+const dispatchSubcommand = async (
   subcommand: string,
   args: string[],
   endpoint: AdminEndpoint,
-): Promise<number> {
+): Promise<number> => {
   switch (subcommand) {
     case "list": {
       const response = await adminCommand(endpoint, "admin.list", {
@@ -219,13 +219,13 @@ async function dispatchSubcommand(
       return 2;
     }
   }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Help text
 // ---------------------------------------------------------------------------
 
-function printHelp(): void {
+const printHelp = (): void => {
   console.log(`Usage: clipruler <subcommand> [options]
 
 Subcommands:
@@ -240,4 +240,4 @@ Subcommands:
 Options:
   --help, -h          Show this help text
 `);
-}
+};

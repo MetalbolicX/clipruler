@@ -47,7 +47,7 @@ export class Keyring {
   }
 }
 
-async function tryEd25519(): Promise<KeyPair> {
+const tryEd25519 = async (): Promise<KeyPair> => {
   const keyPair = await globalThis.crypto.subtle.generateKey(
     { name: "Ed25519" } as Algorithm,
     true,
@@ -60,9 +60,9 @@ async function tryEd25519(): Promise<KeyPair> {
     publicKey: publicKeyBytes,
     privateKey: keyPair.privateKey,
   };
-}
+};
 
-async function generateEcdsaP256(): Promise<KeyPair> {
+const generateEcdsaP256 = async (): Promise<KeyPair> => {
   const keyPair = await globalThis.crypto.subtle.generateKey(
     { name: "ECDSA", namedCurve: "P-256" } as EcKeyGenParams,
     true,
@@ -75,9 +75,9 @@ async function generateEcdsaP256(): Promise<KeyPair> {
     publicKey: publicKeyBytes,
     privateKey: keyPair.privateKey,
   };
-}
+};
 
-async function exportSpki(publicKey: CryptoKey): Promise<Uint8Array> {
+const exportSpki = async (publicKey: CryptoKey): Promise<Uint8Array> => {
   const spkiDer = await globalThis.crypto.subtle.exportKey("spki", publicKey);
   return new Uint8Array(spkiDer);
-}
+};

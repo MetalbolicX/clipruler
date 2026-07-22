@@ -51,27 +51,27 @@ export interface RunningAdminServer {
  * @param deps - Callback dependencies wired by the composition root
  * @returns RunningAdminServer with socketPath and stop function
  */
-export async function startAdminServer(
+export const startAdminServer = async (
   socketPath: string,
   deps: AdminServerDeps,
-): Promise<RunningAdminServer> {
+): Promise<RunningAdminServer> => {
   const os = Deno.build.os;
 
   if (os === "windows") {
     return await startTcpAdminServer(socketPath, deps);
   }
   return await startUnixAdminServer(socketPath, deps);
-}
+};
 
 /**
  * Unix socket admin server (POSIX).
  * Uses explicit .accept() loop instead of for-await to avoid Deno
  * stream buffering issues with Unix domain sockets.
  */
-async function startUnixAdminServer(
+const startUnixAdminServer = async (
   socketPath: string,
   deps: AdminServerDeps,
-): Promise<RunningAdminServer> {
+): Promise<RunningAdminServer> => {
   const { logger } = deps;
 
   // Remove stale socket file if it exists
@@ -100,7 +100,7 @@ async function startUnixAdminServer(
     resolveStopped = resolve;
   });
 
-  function closeServer(): void {
+  const closeServer = (): void => {
     if (closed) return;
     closed = true;
     try {
@@ -109,7 +109,7 @@ async function startUnixAdminServer(
       // Ignore
     }
     resolveStopped();
-  }
+  };
 
   // Accept loop — handle connections concurrently using explicit .accept()
   (async () => {
@@ -133,16 +133,16 @@ async function startUnixAdminServer(
       await stopped;
     },
   };
-}
+};
 
 /**
  * TCP loopback admin server (Windows fallback).
  * Listens on an ephemeral port and writes the chosen port to socketPath file.
  */
-async function startTcpAdminServer(
+const startTcpAdminServer = async (
   socketPath: string,
   deps: AdminServerDeps,
-): Promise<RunningAdminServer> {
+): Promise<RunningAdminServer> => {
   const { logger } = deps;
 
   // TCP loopback on port 0 → OS assigns an ephemeral port
@@ -160,7 +160,7 @@ async function startTcpAdminServer(
     resolveStopped = resolve;
   });
 
-  function closeServer(): void {
+  const closeServer = (): void => {
     if (closed) return;
     closed = true;
     try {
@@ -169,7 +169,7 @@ async function startTcpAdminServer(
       // Ignore close errors
     }
     resolveStopped();
-  }
+  };
 
   (async () => {
     while (!closed) {
@@ -192,18 +192,18 @@ async function startTcpAdminServer(
       await stopped;
     },
   };
-}
+};
 
 /**
  * Handle a single Unix socket connection using raw conn.read()/conn.write().
  * We avoid conn.readable.getReader() on Unix sockets due to Deno stream
  * buffering issues with domain sockets; raw conn.read() works correctly.
  */
-async function handleUnixConn(
+const handleUnixConn = async (
   conn: Deno.Conn,
   deps: AdminServerDeps,
   logger: Logger,
-): Promise<void> {
+): Promise<void> => {
   try {
     await handleUnixConnection(conn, deps, logger);
   } catch (err) {
@@ -215,17 +215,17 @@ async function handleUnixConn(
       // Ignore
     }
   }
-}
+};
 
 /**
  * Handle a Unix socket connection: read envelope, dispatch, write response.
  * Uses conn.read() for reliable reads on Unix sockets.
  */
-async function handleUnixConnection(
+const handleUnixConnection = async (
   conn: Deno.Conn,
   deps: AdminServerDeps,
   logger: Logger,
-): Promise<void> {
+): Promise<void> => {
   // Read 4-byte length prefix with partial-read handling
   const lenBuf = new Uint8Array(4);
   let lenRead = 0;
@@ -277,16 +277,16 @@ async function handleUnixConnection(
     if (n === null) return;
     wireWritten += n;
   }
-}
+};
 
 /**
  * Handle a single TCP connection using raw conn.read()/conn.write().
  */
-async function handleTcpConn(
+const handleTcpConn = async (
   conn: Deno.TcpConn,
   deps: AdminServerDeps,
   logger: Logger,
-): Promise<void> {
+): Promise<void> => {
   try {
     await handleTcpConnection(conn, deps, logger);
   } catch (err) {
@@ -298,17 +298,17 @@ async function handleTcpConn(
       // Ignore
     }
   }
-}
+};
 
 /**
  * Handle a TCP connection: read envelope, dispatch, write response.
  * Uses conn.read() for reliable reads.
  */
-async function handleTcpConnection(
+const handleTcpConnection = async (
   conn: Deno.TcpConn,
   deps: AdminServerDeps,
   logger: Logger,
-): Promise<void> {
+): Promise<void> => {
   // Read 4-byte length prefix
   const lenBuf = new Uint8Array(4);
   let lenRead = 0;
@@ -354,16 +354,16 @@ async function handleTcpConnection(
     if (n === null) return;
     wireWritten += n;
   }
-}
+};
 
 /**
  * Dispatch an admin envelope to the appropriate callback and return a response.
  */
-async function dispatchAdmin(
+const dispatchAdmin = async (
   envelope: Envelope,
   deps: AdminServerDeps,
   logger: Logger,
-): Promise<Envelope | null> {
+): Promise<Envelope | null> => {
   const { onList, onEnable, onForget, onStatus } = deps;
 
   const makeResponse = (
@@ -437,4 +437,4 @@ async function dispatchAdmin(
     logger.error("admin-server: dispatch error", { error: String(err) });
     return makeResponse("error", String(err));
   }
-}
+};

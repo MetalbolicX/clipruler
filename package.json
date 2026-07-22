@@ -1,0 +1,7 @@
+{
+  "name": "clipruler",
+  "private": true,
+  "scripts": {
+    "build": "deno task check"
+  }
+}

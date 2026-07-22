@@ -75,10 +75,10 @@ export class WlClipboardAdapter implements ClipboardAdapter {
   }
 }
 
-async function defaultRunner(
+const defaultRunner = async (
   cmd: string[],
   stdin?: string,
-): Promise<{ stdout: Uint8Array; stderr: Uint8Array; code: number }> {
+): Promise<{ stdout: Uint8Array; stderr: Uint8Array; code: number }> => {
   const proc = new Deno.Command(cmd[0]!, {
     args: cmd.slice(1),
     stdin: stdin ? "piped" : "null",
@@ -95,4 +95,4 @@ async function defaultRunner(
   }
   const { code, stdout, stderr } = await proc.output();
   return { code, stdout, stderr };
-}
+};

@@ -803,9 +803,9 @@ class FramingReaderState {
  * @param options.maxPeers - Maximum concurrent peer connections (default: Infinity).
  * @param options.onPeerCert - Required callback to extract peer fingerprint from Deno.TlsConn.
  */
-export function makeTlsTcpTransport(options: TlsTcpTransportOptions): TlsTcpTransport {
+export const makeTlsTcpTransport = (options: TlsTcpTransportOptions): TlsTcpTransport => {
   return new TlsTcpTransportImpl(options) as unknown as TlsTcpTransport;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Public interface (extends Transport with dial/listen)
@@ -840,7 +840,7 @@ export interface TlsTcpTransport extends Transport {
 // Utility: decodeEnvelope from wire format
 // ---------------------------------------------------------------------------
 
-function decodeEnvelopeWire(bytes: Uint8Array): Envelope {
+const decodeEnvelopeWire = (bytes: Uint8Array): Envelope => {
   if (bytes.byteLength < 4) throw new Error("frame too short");
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const length = view.getUint32(0, false);
@@ -853,18 +853,18 @@ function decodeEnvelopeWire(bytes: Uint8Array): Envelope {
     throw new Error(`Unsupported protocol version: ${parsed.version}`);
   }
   return parsed as Envelope;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Utility: concat Uint8Arrays
 // ---------------------------------------------------------------------------
 
-function concatU8(a: Uint8Array, b: Uint8Array): Uint8Array {
+const concatU8 = (a: Uint8Array, b: Uint8Array): Uint8Array => {
   const result = new Uint8Array(a.byteLength + b.byteLength);
   result.set(a, 0);
   result.set(b, a.byteLength);
   return result;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Banner exchange — mutual fingerprint advertisement after TLS handshake
@@ -875,10 +875,10 @@ function concatU8(a: Uint8Array, b: Uint8Array): Uint8Array {
  * Format: 4-byte big-endian uint32 length + fingerprint bytes.
  * Flushes fully before returning to ensure the peer can receive immediately.
  */
-async function sendBanner(
+const sendBanner = async (
   writer: WritableStreamDefaultWriter<Uint8Array>,
   fingerprint: string,
-): Promise<void> {
+): Promise<void> => {
   const fpBytes = new TextEncoder().encode(fingerprint);
   const lenBuf = new Uint8Array(4);
   new DataView(lenBuf.buffer as ArrayBuffer).setUint32(0, fpBytes.byteLength, false);
@@ -886,15 +886,15 @@ async function sendBanner(
   await writer.write(fpBytes);
   // Flush: wait until the write is fully acknowledged at the TLS record layer
   await writer.ready;
-}
+};
 
 /**
  * Receive a fingerprint banner from the connection.
  * Returns the fingerprint string.
  */
-async function recvBanner(
+const recvBanner = async (
   reader: ReadableStreamDefaultReader<Uint8Array>,
-): Promise<string> {
+): Promise<string> => {
   // Read 4-byte length prefix
   const lenResult = await reader.read();
   if (lenResult.done) throw new Error("peer disconnected during banner");
@@ -917,4 +917,4 @@ async function recvBanner(
   }
   fpBytes = fpBytes.subarray(0, len);
   return new TextDecoder("utf-8").decode(fpBytes);
-}
+};

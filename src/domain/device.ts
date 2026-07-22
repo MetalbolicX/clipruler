@@ -38,40 +38,40 @@ const DEVICE_BRAND = "DeviceId" as const;
 const MESSAGE_BRAND = "MessageId" as const;
 const FINGERPRINT_BRAND = "PublicKeyFingerprint" as const;
 
-function isBranded<T>(value: unknown, brand: string): value is T {
+const isBranded = <T>(value: unknown, brand: string): value is T => {
   return (
     typeof value === "string" &&
     (value as unknown as { __brand?: string }).__brand === brand
   );
-}
+};
 
-export function isDeviceId(value: unknown): value is DeviceId {
+export const isDeviceId = (value: unknown): value is DeviceId => {
   return isBranded<DeviceId>(value, DEVICE_BRAND);
-}
+};
 
-export function isMessageId(value: unknown): value is MessageId {
+export const isMessageId = (value: unknown): value is MessageId => {
   return isBranded<MessageId>(value, MESSAGE_BRAND);
-}
+};
 
-export function isPublicKeyFingerprint(value: unknown): value is PublicKeyFingerprint {
+export const isPublicKeyFingerprint = (value: unknown): value is PublicKeyFingerprint => {
   return isBranded<PublicKeyFingerprint>(value, FINGERPRINT_BRAND);
-}
+};
 
 // ---------------------------------------------------------------------------
 // Factories — trusted boundary for creating branded IDs
 // ---------------------------------------------------------------------------
 
-export function makeDeviceId(raw: string): DeviceId {
+export const makeDeviceId = (raw: string): DeviceId => {
   return raw as DeviceId;
-}
+};
 
-export function makeMessageId(raw: string): MessageId {
+export const makeMessageId = (raw: string): MessageId => {
   return raw as MessageId;
-}
+};
 
-export function makePublicKeyFingerprint(raw: string): PublicKeyFingerprint {
+export const makePublicKeyFingerprint = (raw: string): PublicKeyFingerprint => {
   return raw as PublicKeyFingerprint;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Device value object
@@ -100,22 +100,22 @@ export class Device {
  * Returns a lowercase 64-character hex string (SHA-256 digest).
  * This operation is deterministic: identical input ALWAYS yields identical output.
  */
-export async function deriveFingerprint(key: Uint8Array): Promise<string> {
+export const deriveFingerprint = async (key: Uint8Array): Promise<string> => {
   const digest = await globalThis.crypto.subtle.digest(
     "SHA-256",
     key as BufferSource,
   );
   return bytesToHex(digest);
-}
+};
 
 /**
  * Canonical hex encoding: lowercase, two hex chars per byte.
  */
-export function bytesToHex(buffer: ArrayBuffer): string {
+export const bytesToHex = (buffer: ArrayBuffer): string => {
   const view = new DataView(buffer);
   const parts: string[] = new Array(buffer.byteLength);
   for (let i = 0; i < buffer.byteLength; i++) {
     parts[i] = view.getUint8(i).toString(16).padStart(2, "0");
   }
   return parts.join("");
-}
+};

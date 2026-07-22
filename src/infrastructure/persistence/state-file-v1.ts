@@ -53,23 +53,23 @@ export interface StateFileV1 {
 // Runtime type guard
 // ---------------------------------------------------------------------------
 
-function isString(value: unknown): value is string {
+const isString = (value: unknown): value is string => {
   return typeof value === "string";
-}
+};
 
-function isNumber(value: unknown): value is number {
+const isNumber = (value: unknown): value is number => {
   return typeof value === "number" && Number.isInteger(value);
-}
+};
 
-function isBoolean(value: unknown): value is boolean {
+const isBoolean = (value: unknown): value is boolean => {
   return typeof value === "boolean";
-}
+};
 
 /**
  * Returns true if the given value is a structurally valid StateFileV1.
  * Used at runtime to validate untrusted JSON before deserialising.
  */
-export function isStateFileV1(x: unknown): x is StateFileV1 {
+export const isStateFileV1 = (x: unknown): x is StateFileV1 => {
   if (!isObject(x)) return false;
 
   // schemaVersion must be exactly 1
@@ -96,13 +96,13 @@ export function isStateFileV1(x: unknown): x is StateFileV1 {
   }
 
   return true;
-}
+};
 
-function isObject(value: unknown): value is Record<string, unknown> {
+const isObject = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+};
 
-function isTrustedDeviceEntry(x: unknown): x is TrustedDeviceEntry {
+const isTrustedDeviceEntry = (x: unknown): x is TrustedDeviceEntry => {
   if (!isObject(x)) return false;
 
   const o = x as Record<string, unknown>;
@@ -125,4 +125,4 @@ function isTrustedDeviceEntry(x: unknown): x is TrustedDeviceEntry {
   if (!isBoolean(o["enabled"])) return false;
 
   return true;
-}
+};

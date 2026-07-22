@@ -16,7 +16,7 @@ import type { RunningDaemon } from "./composition-root.ts";
  *
  * @param deviceName - Human-readable device name
  */
-export async function daemonMain(deviceName: string): Promise<void> {
+export const daemonMain = async (deviceName: string): Promise<void> => {
   let running: RunningDaemon;
 
   try {
@@ -52,4 +52,4 @@ export async function daemonMain(deviceName: string): Promise<void> {
   });
 
   await running.stop();
-}
+};

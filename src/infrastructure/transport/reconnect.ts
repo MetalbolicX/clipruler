@@ -115,18 +115,18 @@ const claiming = new Map<string, boolean>();
 const PENDING_PLACEHOLDER = Promise.resolve() as Promise<void>;
 
 // Default jitter: adds ±50% randomness to the delay
-function defaultJitter(min: number, max: number): number {
+const defaultJitter = (min: number, max: number): number => {
   return Math.random() * (max - min) + min;
-}
+};
 
 // Default clock using global setTimeout
-function defaultClock(): Clock {
+const defaultClock = (): Clock => {
   return {
     setTimeout(fn: () => void, delayMs: number) {
       globalThis.setTimeout(fn, delayMs);
     },
   };
-}
+};
 
 // ---------------------------------------------------------------------------
 // reconnect
@@ -142,10 +142,10 @@ function defaultClock(): Clock {
  * @param opts         Reconnect configuration.
  * @returns An object with a `cancel()` method and an `outcome` promise.
  */
-export function reconnect(
+export const reconnect = (
   fingerprint: string,
   opts: ReconnectOptions,
-): { cancel(): void; outcome: Promise<void> } {
+): { cancel(): void; outcome: Promise<void> } => {
   // Race-condition guard: claim the fingerprint slot BEFORE creating state.
   // Map.set returns the PREVIOUS value. If non-undefined, another call
   // already claimed this fingerprint — return its outcome.
@@ -199,23 +199,23 @@ export function reconnect(
 
   let attempt = 0;
 
-  function scheduleRetry(delayMs: number): void {
+  const scheduleRetry = (delayMs: number): void => {
     if (settled) return;
     clock.setTimeout(() => {
       if (settled || cancelController.signal.aborted) return;
       // Catch to prevent unhandled rejection from async loop()
       loop().catch(() => {});
     }, delayMs);
-  }
+  };
 
-  function cleanup(): void {
+  const cleanup = (): void => {
     settled = true;
     states.delete(fingerprint);
     pendingOutcomes.delete(fingerprint);
     claiming.delete(fingerprint);
-  }
+  };
 
-  async function loop(): Promise<void> {
+  const loop = async (): Promise<void> => {
     if (settled || cancelController.signal.aborted) return;
 
     attempt++;
@@ -266,7 +266,7 @@ export function reconnect(
     const jitterBias = jitterFn(0, rawDelay * jitterFraction);
     const totalDelay = rawDelay + jitterBias;
     scheduleRetry(totalDelay);
-  }
+  };
 
   // Start the first attempt immediately
   loop().catch(() => {});
@@ -277,4 +277,4 @@ export function reconnect(
     },
     outcome,
   };
-}
+};

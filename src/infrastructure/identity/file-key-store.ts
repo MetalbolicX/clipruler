@@ -216,15 +216,15 @@ export class FileKeyStore implements KeyStore {
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function ensureDir(path: string): Promise<void> {
+const ensureDir = async (path: string): Promise<void> => {
   try {
     await Deno.mkdir(path, { recursive: true });
   } catch (err) {
     if (!(err instanceof Deno.errors.AlreadyExists)) throw err;
   }
-}
+};
 
-async function toPrivateKeyMaterial(kp: KeyPair): Promise<PrivateKeyMaterial> {
+const toPrivateKeyMaterial = async (kp: KeyPair): Promise<PrivateKeyMaterial> => {
   const pkcs8Der = await globalThis.crypto.subtle.exportKey("pkcs8", kp.privateKey);
   const pkcs8Bytes = new Uint8Array(pkcs8Der);
   const privateKeyBase64 = encodeBase64(pkcs8Bytes).replace(/\n/g, "");
@@ -235,12 +235,12 @@ async function toPrivateKeyMaterial(kp: KeyPair): Promise<PrivateKeyMaterial> {
     privateKeyBase64,
     publicKeyBase64,
   };
-}
+};
 
-async function importKeyPair(
+const importKeyPair = async (
   algorithm: "Ed25519" | "ECDSA-P256",
   pkcs8Base64: string,
-): Promise<KeyPair> {
+): Promise<KeyPair> => {
   const binary = atob(pkcs8Base64);
   const pkcs8Der = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
@@ -266,7 +266,7 @@ async function importKeyPair(
     publicKey: new Uint8Array(publicKeySpkiDer),
     privateKey,
   };
-}
+};
 
 interface StoredDevice {
   readonly deviceId: DeviceId;
@@ -276,12 +276,10 @@ interface StoredDevice {
   readonly clipboardSharingEnabled: boolean;
 }
 
-function toStoredDevice(entry: TrustedDeviceEntry): StoredDevice {
-  return {
-    deviceId: entry.deviceId,
-    deviceName: entry.deviceName,
-    lastEndpoint: null,
-    lastSeenAt: entry.lastSeenEpochMs ? new Date(entry.lastSeenEpochMs).toISOString() : null,
-    clipboardSharingEnabled: false,
-  };
-}
+const toStoredDevice = (entry: TrustedDeviceEntry): StoredDevice => ({
+  deviceId: entry.deviceId,
+  deviceName: entry.deviceName,
+  lastEndpoint: null,
+  lastSeenAt: entry.lastSeenEpochMs ? new Date(entry.lastSeenEpochMs).toISOString() : null,
+  clipboardSharingEnabled: false,
+});

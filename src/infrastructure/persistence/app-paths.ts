@@ -36,16 +36,16 @@ type EnvGetter = (key: string) => string | undefined;
  * Pass `Deno.env.get.bind(Deno.env)` in production, or a fake for tests.
  * When called with no args, uses the real Deno environment.
  */
-export function makeAppPaths(env: EnvGetter = Deno.env.get.bind(Deno.env)): AppPaths {
+export const makeAppPaths = (env: EnvGetter = Deno.env.get.bind(Deno.env)): AppPaths => {
   const os = env("OS") ?? "";
 
   if (os === "Windows_NT") {
     return makeWindowsPaths(env);
   }
   return makePosixPaths(env);
-}
+};
 
-function makePosixPaths(env: EnvGetter): AppPaths {
+const makePosixPaths = (env: EnvGetter): AppPaths => {
   const home = env("HOME") ?? "/tmp";
   const configHome = env("XDG_CONFIG_HOME") ?? resolve(home, ".config");
   const dataHome = env("XDG_DATA_HOME") ?? resolve(home, ".local", "share");
@@ -65,9 +65,9 @@ function makePosixPaths(env: EnvGetter): AppPaths {
     pidFile,
     adminEndpointFile: resolve(dataDir, "admin.endpoint"),
   };
-}
+};
 
-function makeWindowsPaths(env: EnvGetter): AppPaths {
+const makeWindowsPaths = (env: EnvGetter): AppPaths => {
   const appData = env("APPDATA") ?? "C:/Users/Unknown/AppData/Roaming";
   const localAppData = env("LOCALAPPDATA") ?? "C:/Users/Unknown/AppData/Local";
 
@@ -85,21 +85,21 @@ function makeWindowsPaths(env: EnvGetter): AppPaths {
   const adminEndpointFile = dataDir + "/admin.endpoint";
 
   return { configDir, dataDir, cacheDir, stateFile, pidFile, adminEndpointFile };
-}
+};
 
 /**
  * Resolve the application paths using the real Deno environment.
  * Alias for makeAppPaths() with no arguments.
  */
-export function resolveAppPaths(): AppPaths {
+export const resolveAppPaths = (): AppPaths => {
   return makeAppPaths();
-}
+};
 
 /**
  * Ensure all required application directories exist.
  * Creates configDir, dataDir, and cacheDir recursively.
  */
-export async function ensureAppDirs(paths: AppPaths): Promise<void> {
+export const ensureAppDirs = async (paths: AppPaths): Promise<void> => {
   for (const dir of [paths.configDir, paths.dataDir, paths.cacheDir]) {
     try {
       await Deno.mkdir(dir, { recursive: true });
@@ -107,4 +107,4 @@ export async function ensureAppDirs(paths: AppPaths): Promise<void> {
       if (!(err instanceof Deno.errors.AlreadyExists)) throw err;
     }
   }
-}
+};

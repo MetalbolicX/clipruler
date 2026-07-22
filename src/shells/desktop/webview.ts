@@ -88,7 +88,7 @@ export interface BrowserWindow {
 // Default window factory — uses the real Deno.BrowserWindow
 // ---------------------------------------------------------------------------
 
-function makeBrowserWindow(htmlPath: string): BrowserWindow {
+const makeBrowserWindow = (htmlPath: string): BrowserWindow => {
   // Deno.BrowserWindow is the platform's native window class.
   // It adopts the initial desktop window when created with the htmlPath argument.
   // deno:unstable-desktop is required to access BrowserWindow.
@@ -103,7 +103,7 @@ function makeBrowserWindow(htmlPath: string): BrowserWindow {
     );
   }
   return new BW(htmlPath);
-}
+};
 
 // ---------------------------------------------------------------------------
 // WebviewImpl

@@ -23,10 +23,10 @@ const HEX_FINGERPRINT_RE = /^[0-9a-f]{64}$/;
  * @returns 6-character lowercase hex string
  * @throws Error if either input is not a valid 64-char lowercase hex fingerprint
  */
-export async function derivePairingCode(
+export const derivePairingCode = async (
   a: PublicKeyFingerprint,
   b: PublicKeyFingerprint,
-): Promise<string> {
+): Promise<string> => {
   if (!HEX_FINGERPRINT_RE.test(a)) {
     throw new Error(`Invalid fingerprint (a): not 64-char hex`);
   }
@@ -40,4 +40,4 @@ export async function derivePairingCode(
     .map((x) => x.toString(16).padStart(2, "0"))
     .join("");
   return hex.slice(0, 6);
-}
+};

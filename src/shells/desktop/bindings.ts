@@ -42,12 +42,12 @@ interface BindingsRecord {
   invoke: (method: string, params?: unknown) => Promise<unknown>;
 }
 
-function _getBindings(webview: unknown): BindingsRecord | undefined {
+const _getBindings = (webview: unknown): BindingsRecord | undefined => {
   if (webview == null || typeof webview !== "object") return undefined;
   return (webview as Record<symbol, BindingsRecord>)[BINDINGS_KEY];
-}
+};
 
-function setBindings(webview: unknown, bindings: BindingsRecord): void {
+const setBindings = (webview: unknown, bindings: BindingsRecord): void => {
   if (webview == null || typeof webview !== "object") return;
   Object.defineProperty(webview as object, BINDINGS_KEY, {
     value: bindings,
@@ -55,13 +55,13 @@ function setBindings(webview: unknown, bindings: BindingsRecord): void {
     enumerable: false,
     configurable: true,
   });
-}
+};
 
-function deleteBindings(webview: unknown): void {
+const deleteBindings = (webview: unknown): void => {
   if (webview == null || typeof webview !== "object") return;
   // deno-lint-ignore no-explicit-any
   delete (webview as any)[BINDINGS_KEY];
-}
+};
 
 // ---------------------------------------------------------------------------
 // registerBindings — populate window.__clipruler in the webview
@@ -74,11 +74,11 @@ function deleteBindings(webview: unknown): void {
  * @param endpoint      — Resolved admin endpoint (unix socket or TCP port)
  * @param adminCommand  — adminCommand implementation (injected from outside)
  */
-export function registerBindings(
+export const registerBindings = (
   webview: unknown,
   endpoint: AdminEndpoint,
   adminCommand: AdminCommandFn,
-): CliprulerBindings {
+): CliprulerBindings => {
   const invoke: BindingsRecord["invoke"] = (method, params) =>
     adminCommand(endpoint, method, params);
 
@@ -102,7 +102,7 @@ export function registerBindings(
   }
 
   return bindings;
-}
+};
 
 // ---------------------------------------------------------------------------
 // unregisterBindings — remove window.__clipruler from the webview
@@ -114,7 +114,7 @@ export function registerBindings(
  *
  * @param webview — same BrowserWindow or webview object passed to registerBindings
  */
-export function unregisterBindings(webview: unknown): void {
+export const unregisterBindings = (webview: unknown): void => {
   // Remove from internal symbol store
   deleteBindings(webview);
 
@@ -130,7 +130,7 @@ export function unregisterBindings(webview: unknown): void {
       configurable: true,
     });
   }
-}
+};
 
 // ---------------------------------------------------------------------------
 // onReload — DWB-2.3 graceful gap handler (no-op; event is cosmetic)
@@ -145,7 +145,7 @@ export function unregisterBindings(webview: unknown): void {
  * @param _webview  — the webview object
  * @param _handler  — callback (unused — gap)
  */
-export function onReload(_webview: unknown, _handler: () => void): void {
+export const onReload = (_webview: unknown, _handler: () => void): void => {
   // DWB-2.3: BrowserWindow 'reload' event not documented; no-op to avoid
   // crashing the webview process if the event never fires.
-}
+};

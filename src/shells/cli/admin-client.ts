@@ -42,11 +42,11 @@ export interface AdminResponse<T = unknown> {
  * @returns Parsed AdminResponse from the daemon
  * @throws Error if the connection fails (caller maps to exit code 2)
  */
-export async function adminCommand<T = unknown>(
+export const adminCommand = async <T = unknown>(
   endpoint: AdminEndpoint,
   kind: import("../../protocol/envelope.ts").EnvelopeKind,
   payload: unknown,
-): Promise<AdminResponse<T>> {
+): Promise<AdminResponse<T>> => {
   // Connect to the admin endpoint
   const conn = endpoint.kind === "unix"
     ? await Deno.connect({ transport: "unix", path: endpoint.path })
@@ -116,7 +116,7 @@ export async function adminCommand<T = unknown>(
       // Connection already closed — ignore
     }
   }
-}
+};
 
 // ---------------------------------------------------------------------------
 // readAdminEndpoint — resolves daemon admin endpoint with retry
@@ -132,9 +132,9 @@ const RETRY_DELAY_MS = 50;
  * - Valid JSON: returns AdminEndpoint (unix or tcp)
  * - Malformed JSON: throws
  */
-export async function readAdminEndpoint(
+export const readAdminEndpoint = async (
   adminEndpointFile: string,
-): Promise<AdminEndpoint | null> {
+): Promise<AdminEndpoint | null> => {
   for (let attempt = 0; attempt < RETRY_COUNT; attempt++) {
     try {
       const content = await Deno.readTextFile(adminEndpointFile);
@@ -160,4 +160,4 @@ export async function readAdminEndpoint(
     }
   }
   return null;
-}
+};

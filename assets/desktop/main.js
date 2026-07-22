@@ -24,22 +24,22 @@
    * @param {string} s
    * @returns {string}
    */
-  function escapeHtml(s) {
+  const escapeHtml = (s) => {
     return String(s)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
-  }
+  };
 
   /**
    * Render the devices view — polls admin.list every 3 seconds.
    */
-  function renderDevices() {
+  const renderDevices = () => {
     app.innerHTML = '<h2>Devices</h2><div id="device-list">Loading...</div>';
     const list = document.getElementById("device-list");
 
-    function load() {
+    const load = () => {
       if (!globalThis.__clipruler) {
         list.innerHTML = '<p class="error">Bindings not available.</p>';
         return;
@@ -71,17 +71,17 @@
         .catch(function (err) {
           list.innerHTML = '<p class="error">' + escapeHtml(String(err)) + "</p>";
         });
-    }
+    };
 
     load();
     // 3-second polling per DWB-3.1
     setInterval(load, 3000);
-  }
+  };
 
   /**
    * Render the status view.
    */
-  function renderStatus() {
+  const renderStatus = () => {
     app.innerHTML = '<h2>Status</h2><div id="status-view">Loading...</div>';
     const view = document.getElementById("status-view");
 
@@ -103,12 +103,12 @@
       .catch(function () {
         view.innerHTML = "<p>Daemon unreachable.</p>";
       });
-  }
+  };
 
   /**
    * Render the pair view — surfaces not_implemented placeholder.
    */
-  function renderPair() {
+  const renderPair = () => {
     app.innerHTML = "<h2>Pair</h2>" +
       '<div id="pair-view">' +
       '<button id="btn-pair">Start Pairing</button>' +
@@ -142,7 +142,7 @@
             escapeHtml(String(err)) + "</p>";
         });
     });
-  }
+  };
 
   /** @type {Record<string, () => void>} */
   const routes = {
@@ -155,7 +155,7 @@
    * Parse location.hash and dispatch to the appropriate handler.
    * Default: #/devices if no hash is set.
    */
-  function dispatch() {
+  const dispatch = () => {
     const hash = location.hash || "#/devices";
     const handler = routes[hash];
     if (handler) {
@@ -164,7 +164,7 @@
       // Unknown route — fall back to devices without changing the hash
       routes["#/devices"]();
     }
-  }
+  };
 
   // Initial render
   dispatch();

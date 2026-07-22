@@ -31,15 +31,15 @@ export const MAX_FRAME_BODY_BYTES = 16 * 1024 * 1024;
  * @param envelope - The Envelope to frame and write
  * @throws FramingError if the encoded body exceeds MAX_FRAME_BODY_BYTES
  */
-export async function writeEnvelope(
+export const writeEnvelope = async (
   writer: WritableStreamDefaultWriter<Uint8Array>,
   envelope: Envelope,
-): Promise<void> {
+): Promise<void> => {
   // encodeEnvelope returns full wire format: [4-byte length prefix][JSON body].
   // We just write it as one chunk so the reader can parse prefix + body without interleaving.
   const wireBytes = encodeEnvelope(envelope);
   await writer.write(wireBytes);
-}
+};
 
 // ---------------------------------------------------------------------------
 // FramingReader — stateful reader that properly handles chunk boundaries
@@ -209,9 +209,9 @@ export class FramingReader {
  * @param reader - ReadableStreamDefaultReader<Uint8Array> backed by the transport byte stream
  * @throws FramingError when the frame cannot be fully decoded (oversize, truncated, invalid)
  */
-export function readEnvelope(
+export const readEnvelope = (
   reader: ReadableStreamDefaultReader<Uint8Array>,
-): Promise<Envelope> {
+): Promise<Envelope> => {
   const fr = new FramingReader(reader);
   return fr.readEnvelope();
-}
+};

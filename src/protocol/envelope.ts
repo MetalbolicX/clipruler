@@ -74,13 +74,13 @@ export type Envelope<K extends EnvelopeKind = EnvelopeKind> = {
  * Construct a fresh envelope with a unique messageId.
  * Uses `globalThis.crypto.randomUUID()` for entropy.
  */
-export function makeEnvelope<
+export const makeEnvelope = <
   K extends EnvelopeKind,
 >(
   originDeviceId: string,
   kind: K,
   payload: PayloadByKind<K>,
-): Envelope<K> {
+): Envelope<K> => {
   return {
     version: PROTOCOL_VERSION,
     messageId: makeMessageId(globalThis.crypto.randomUUID()),
@@ -88,7 +88,7 @@ export function makeEnvelope<
     kind,
     payload,
   };
-}
+};
 
 // ---------------------------------------------------------------------------
 // Codec
@@ -100,7 +100,7 @@ export function makeEnvelope<
  *
  * @throws Error with "oversize" if encoded body exceeds MAX_ENVELOPE_BYTES
  */
-export function encodeEnvelope<K extends EnvelopeKind>(env: Envelope<K>): Uint8Array {
+export const encodeEnvelope = <K extends EnvelopeKind>(env: Envelope<K>): Uint8Array => {
   const json = JSON.stringify(env);
   const body = new TextEncoder().encode(json);
 
@@ -118,7 +118,7 @@ export function encodeEnvelope<K extends EnvelopeKind>(env: Envelope<K>): Uint8A
   result.set(body, 4);
 
   return result;
-}
+};
 
 /**
  * Decode a wire-format envelope from UTF-8 bytes.
@@ -126,7 +126,7 @@ export function encodeEnvelope<K extends EnvelopeKind>(env: Envelope<K>): Uint8A
  *
  * @throws Error if decoding fails (invalid JSON, wrong version, etc.)
  */
-export function decodeEnvelope(bytes: Uint8Array): Envelope {
+export const decodeEnvelope = (bytes: Uint8Array): Envelope => {
   if (bytes.byteLength < 4) {
     throw new Error("Envelope bytes too short for length prefix");
   }
@@ -155,4 +155,4 @@ export function decodeEnvelope(bytes: Uint8Array): Envelope {
   }
 
   return parsed;
-}
+};

@@ -43,9 +43,9 @@ export interface DeviceListView {
  * peers come from Discovery.visible(). A paired device is "reachable" when its
  * fingerprint appears in the visible peer map.
  */
-export async function listDevices(
+export const listDevices = async (
   deps: ListDevicesDeps,
-): Promise<DeviceListView> {
+): Promise<DeviceListView> => {
   const [stored, visible] = await Promise.all([
     deps.devices.list(),
     deps.discovery.visible(),
@@ -73,4 +73,4 @@ export async function listDevices(
   }
 
   return { paired, available };
-}
+};

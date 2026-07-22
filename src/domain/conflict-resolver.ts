@@ -35,11 +35,11 @@ export type ObserveOutput = {
 // Factory
 // ---------------------------------------------------------------------------
 
-export function initResolver(): ResolverState {
+export const initResolver = (): ResolverState => {
   return {
     seenMessageIds: new Map(),
   };
-}
+};
 
 // ---------------------------------------------------------------------------
 // observe — pure reducer
@@ -51,10 +51,10 @@ export function initResolver(): ResolverState {
 //      (equal version + different messageId = deduplicated per spec)
 // ---------------------------------------------------------------------------
 
-export function observe(state: ResolverState, event: {
+export const observe = (state: ResolverState, event: {
   readonly version: Version;
   readonly messageId: MessageId;
-}): ObserveOutput {
+}): ObserveOutput => {
   const { version, messageId } = event;
 
   // Rule 1: messageId deduplication
@@ -92,4 +92,4 @@ export function observe(state: ResolverState, event: {
 
   // cmp < 0 → stale
   return { state, result: { result: "rejected-stale" } };
-}
+};

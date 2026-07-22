@@ -26,16 +26,16 @@ import type { UiPort } from "../../ports/ui.ts";
  * The webview bridge uses string method names (e.g., "admin.pair.confirm"),
  * but the admin channel uses typed EnvelopeKind. This adapter bridges the two.
  */
-function wrapAdminCommand(
+const wrapAdminCommand = (
   endpoint: AdminEndpoint,
   method: string,
   // deno-lint-ignore no-explicit-any
   params?: any, // params type depends on the method; use any for flexibility
-): Promise<unknown> {
+): Promise<unknown> => {
   // Cast method to EnvelopeKind — this is safe because the webview only
   // invokes known admin methods (pair.confirm, pair.cancel, etc.)
   return adminCommand(endpoint, method as EnvelopeKind, params);
-}
+};
 
 const HELP = `Usage: clipruler desktop [options]
   --help, -h    Show this help
@@ -55,7 +55,7 @@ const HELP = `Usage: clipruler desktop [options]
  *   1 — headless guard refused (no display server)
  *   2 — usage error
  */
-export async function desktopMain(args: string[]): Promise<number> {
+export const desktopMain = async (args: string[]): Promise<number> => {
   // Handle --help / -h first
   if (args.includes("--help") || args.includes("-h")) {
     console.log(HELP);
@@ -133,4 +133,4 @@ export async function desktopMain(args: string[]): Promise<number> {
   await daemon.stop();
 
   return 0;
-}
+};
