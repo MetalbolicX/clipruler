@@ -10,20 +10,10 @@
  * Layer: unit — calls desktopMain in-process with mocked headlessGuard.
  */
 
-import { assertEquals, assertStringIncludes } from "jsr:@std/assert@^1.0";
+import { assertEquals } from "jsr:@std/assert@^1.0";
 import { desktopMain } from "../../../../src/shells/desktop/mod.ts";
 
-// ---------------------------------------------------------------------------
-// headlessGuard mock seam
-// ---------------------------------------------------------------------------
-
-// We override the headlessGuard module with a mock for these tests.
-const originalModule = await import("../../../../src/shells/desktop/headless-guard.ts");
-
-let mockGuardResult: { ok: boolean; reason?: string } = { ok: true };
-
-// We cannot easily override the import, so tests run with the real headlessGuard
-// and we set env vars to control the result instead.
+// Tests run with the real headlessGuard and control the result via env vars.
 
 Deno.test("desktopMain: empty args → exit 2", async () => {
   // Clear any display env vars so guard passes (or fails predictably)

@@ -25,6 +25,9 @@ const HELP = `Usage: clipruler desktop [options]
  *   2 — usage error
  */
 export async function desktopMain(args: string[]): Promise<number> {
+  // Slice 1: headlessGuard is sync, but keep async for future async steps
+  await Promise.resolve();
+
   // Handle --help / -h first
   if (args.includes("--help") || args.includes("-h")) {
     console.log(HELP);

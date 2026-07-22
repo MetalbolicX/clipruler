@@ -19,10 +19,6 @@ function readEnv(key: string): string | undefined {
   return Deno.env.get(key);
 }
 
-function isBlank(s: string | undefined): boolean {
-  return s === undefined || s.trim() === "";
-}
-
 function isNonBlank(s: string | undefined): boolean {
   return s !== undefined && s.trim() !== "";
 }
