@@ -70,7 +70,7 @@ type udpListener struct {
 
 func (u *udpListener) Receive(ctx context.Context) ([]byte, string, error) {
 	type result struct {
-		n    int
+		data []byte
 		from *net.UDPAddr
 		err  error
 	}
@@ -78,24 +78,33 @@ func (u *udpListener) Receive(ctx context.Context) ([]byte, string, error) {
 	go func() {
 		buf := make([]byte, 1500)
 		n, from, err := u.conn.ReadFromUDP(buf)
-		done <- result{n: n, from: from, err: err}
+		if err != nil {
+			done <- result{from: from, err: err}
+			return
+		}
+		payload := make([]byte, n)
+		copy(payload, buf[:n])
+		done <- result{data: payload, from: from}
 	}()
 	select {
 	case <-ctx.Done():
-		// Closing the conn unblocks the reader with net.ErrClosed.
-		_ = u.conn.Close()
+		// Unblock the pending ReadFromUDP with an immediate deadline
+		// instead of closing the conn; the listener must survive
+		// repeated ctx cancellations across the receive poll window.
+		_ = u.conn.SetReadDeadline(time.Now())
+		<-done
+		// Clear the deadline so subsequent Receive calls are not
+		// poisoned by the now-past read timeout.
+		_ = u.conn.SetReadDeadline(time.Time{})
 		return nil, "", ctx.Err()
 	case r := <-done:
 		if r.err != nil {
+			// Clear the deadline so the next Receive call is not
+			// poisoned by a stale read timeout.
+			_ = u.conn.SetReadDeadline(time.Time{})
 			return nil, "", r.err
 		}
-		out := make([]byte, r.n)
-		copy(out, r.from.IP.String())
-		// Returning a fresh copy keeps the caller buffer-safe across
-		// successive Receive calls.
-		_ = out
-		data := make([]byte, r.n)
-		return data, r.from.IP.String(), nil
+		return r.data, r.from.IP.String(), nil
 	}
 }
 

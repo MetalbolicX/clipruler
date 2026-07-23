@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"net"
 	"sync"
 	"testing"
 	"time"
@@ -219,5 +220,52 @@ func TestBeaconVisibleReturnsCopy(t *testing.T) {
 	second := b.Visible()
 	if _, ok := second["r-fp"]; !ok {
 		t.Fatalf("mutating Visible() snapshot affected internal state")
+	}
+}
+
+// TestUDPListenerReusableAcrossCtxCancel exercises the real udpListener on the
+// loopback UDP path (no multicast group required). It pins down both T1.1 review
+// defects: the receive buffer must be propagated, and the listener must remain
+// usable after a ctx cancellation does not close the underlying conn.
+func TestUDPListenerReusableAcrossCtxCancel(t *testing.T) {
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.ParseIP("127.0.0.1")})
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	addr := conn.LocalAddr().(*net.UDPAddr)
+	l := &udpListener{conn: conn, addr: addr}
+	defer l.Close()
+
+	shortCtx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	_, _, err = l.Receive(shortCtx)
+	cancel()
+	if !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected DeadlineExceeded/Canceled, got %v", err)
+	}
+	if errors.Is(err, net.ErrClosed) {
+		t.Fatalf("conn was closed on ctx cancel; defect B is back")
+	}
+
+	sender, err := net.DialUDP("udp4", nil, addr)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer sender.Close()
+	payload := []byte("hello-beacon")
+	if _, err := sender.Write(payload); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	got, from, err := l.Receive(ctx)
+	if err != nil {
+		t.Fatalf("second receive: %v", err)
+	}
+	if string(got) != string(payload) {
+		t.Fatalf("payload mismatch: got %q want %q", got, payload)
+	}
+	if from == "" {
+		t.Fatalf("expected non-empty source address")
 	}
 }
